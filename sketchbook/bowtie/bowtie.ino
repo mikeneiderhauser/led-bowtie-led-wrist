@@ -78,7 +78,8 @@ byte address[][5] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC , 0xCE, 0xCC, 0xCE, 0xCC, 0xC
 
 /********************** Setup *********************/
 
-
+#define PALETTE_RAINBOW 0
+#define PALETTE_PURPLE 1
 const TProgmemPalette16 myPurplePalette_p PROGMEM =
 {
   CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
@@ -87,6 +88,7 @@ const TProgmemPalette16 myPurplePalette_p PROGMEM =
   CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple
 };
 
+#define PALETTE_RED 2
 const TProgmemPalette16 myRedPalette_p PROGMEM =
 {
   CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
@@ -98,21 +100,58 @@ const TProgmemPalette16 myRedPalette_p PROGMEM =
 CRGBPalette16 currentPalette;
 TBlendType    currentBlending;
 
+CRGBPalette16 backupPalette;
+TBlendType    backupBlending;
+
 #define STATE_OFF 0
 #define STATE_OUTLINE 1
-#define STATE_NIGHTRIDER 2
-#define STATE_OUTLINE_DUAL 3
-#define STATE_OUTLINE_QUAD 4
-#define STATE_OUTLINE_ON 5
-#define STATE_OUTLINE_ON_RAINBOW 6
-#define NUM_STATES 7
+#define STATE_OUTLINE_DUAL 2
+#define STATE_OUTLINE_QUAD 3
+#define STATE_OUTLINE_ON 4
+#define STATE_OUTLINE_ON_RAINBOW 5
+#define STATE_NIGHTRIDER_RED 6
+#define STATE_NIGHTRIDER 7
+#define NUM_STATES 8
 
-uint8_t state = STATE_NIGHTRIDER;
+uint8_t state = STATE_OUTLINE;
 uint8_t state_step = 0;
+uint8_t state_init = 1;
 uint8_t state_change_requested = 0;
 uint8_t state_change_allowed = 0;
 uint8_t state_next_state = 0xff;
 uint8_t palette_step = 0;
+
+unsigned long last_state_change = 0;
+unsigned long state_change_timeout = 30 * 1000; // in seconds
+
+void backup_palette() {
+  backupPalette = currentPalette;
+  backupBlending == currentBlending;
+}
+
+void restore_palette() {
+  currentPalette = backupPalette;
+  currentBlending = backupBlending;
+}
+
+void load_palette(uint8_t palette_id)
+{
+  if (palette_id == PALETTE_RAINBOW)
+  {
+    currentPalette = RainbowColors_p;
+    currentBlending = LINEARBLEND;
+  }
+  else if (palette_id == PALETTE_PURPLE)
+  {
+    currentPalette = myPurplePalette_p;
+    currentBlending = NOBLEND;
+  }
+  else if (palette_id == PALETTE_RED)
+  {
+    currentPalette = myRedPalette_p;
+    currentBlending = NOBLEND;
+  }
+}
 
 void setup() {
   // setup buttons
@@ -155,11 +194,9 @@ void setup() {
     leds[i] = CRGB::Black;
   }
 
-  currentPalette = RainbowColors_p;
-  currentBlending = LINEARBLEND;
-
-  //currentBlending = NOBLEND;
-  //currentPalette = myPurplePalette_p;
+  // Load default palette to memory and init backup palette
+  load_palette(PALETTE_RAINBOW);
+  backup_palette();
   
   // BEGIN
   Serial.begin(115200);
@@ -187,6 +224,7 @@ void setup() {
   
   delay(50);
   attachInterrupt(0, radio_irq, LOW);             // Attach interrupt handler to interrupt #0 (using pin 2) on BOTH the sender and receiver
+  last_state_change = millis();
 }
 
 
@@ -194,6 +232,12 @@ void setup() {
 void loop() {
   // Read inputs
   read_buttons();
+
+  // Transition state on timer
+  if (millis() >= (last_state_change + state_change_timeout))
+  {
+    state_change_requested = 1;
+  }
 
   // State Change logic
   if (state_change_requested == 1 && state_change_allowed==1)
@@ -204,11 +248,12 @@ void loop() {
       state++;
       if(state >= NUM_STATES)
       {
-        state = 0;
+        state = 1;  // 0 is the off state. we dont want to automatically transition to off
       }
     }
     else
     {
+      // Allow external events (nrf incoming, button presses, etc to set the state)
       state = state_next_state;
       state_next_state = 0xff;
     }
@@ -216,6 +261,10 @@ void loop() {
     state_change_requested = 0;
     state_change_allowed = 0;
     state_step = 0;
+    restore_palette();
+    state_init = 1;
+    // save current time
+    last_state_change = millis();
   }
 
   // State machine
@@ -226,9 +275,6 @@ void loop() {
     outline(1);
     //outline_single();
   }
-  else if (state == STATE_NIGHTRIDER) {
-    test_nightrider();  
-  }
   else if (state == STATE_OUTLINE_DUAL) {
     outline(2);
     //outline_dual();  
@@ -238,14 +284,35 @@ void loop() {
     //outline_quad();  
   }
   else if (state == STATE_OUTLINE_ON) {
-    //currentPalette = myPurplePalette_p;
+    if(state_init != 0)
+    {
+      state_init = 0;
+      backup_palette();
+      load_palette(PALETTE_PURPLE);
+    }
     outline_on_from_palette();
   }
   else if (state == STATE_OUTLINE_ON_RAINBOW) {
-    //currentPalette = RainbowColors_p;
+    if(state_init != 0)
+    {
+      state_init = 0;
+      backup_palette();
+      load_palette(PALETTE_RAINBOW);
+    }
     outline_on_from_palette();
   }
-  
+  else if (state == STATE_NIGHTRIDER_RED) {
+    if(state_init != 0)
+    {
+      state_init = 0;
+      backup_palette();
+      load_palette(PALETTE_RED);
+    }
+    test_nightrider();
+  }
+  else if (state == STATE_NIGHTRIDER) {
+    test_nightrider();
+  }
 
   /*
     #ifdef ENABLE_PKT_ACK
@@ -292,15 +359,14 @@ void read_buttons() {
     }
     else if (ts > 2000) {
       Serial.println("TOP HOLD 2 SEC");
-      state_change_requested = 1;
     }
     else if (ts > 1000) {
       Serial.println("TOP HOLD 1 SEC");
+      state_change_requested = 1;
     }
     else if (ts > 500) {
       Serial.println("TOP HOLD 0.5 SEC");
       state_change_requested = 1;
-      currentPalette = RainbowColors_p;
       state_next_state = STATE_OUTLINE_ON_RAINBOW;  // forces next state
     }
     else
