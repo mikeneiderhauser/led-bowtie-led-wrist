@@ -120,9 +120,10 @@ uint8_t state_change_requested = 0;
 uint8_t state_change_allowed = 0;
 uint8_t state_next_state = 0xff;
 uint8_t palette_step = 0;
+uint8_t radio_write = 0;
 
 unsigned long last_state_change = 0;
-unsigned long state_change_timeout = 30 * 1000; // in seconds
+unsigned long state_change_timeout = 10 * 1000; // in seconds
 
 void backup_palette() {
   backupPalette = currentPalette;
@@ -265,6 +266,13 @@ void loop() {
     state_init = 1;
     // save current time
     last_state_change = millis();
+    // Send State ID
+    radio.stopListening();
+    #ifdef ENABLE_PKT_ACK
+    radio.startWrite( &state, sizeof(uint8_t), 0; //ACK
+    #else
+    radio.startWrite( &state, sizeof(uint8_t), 0); //NAK
+    #endif
   }
 
   // State machine
@@ -385,10 +393,12 @@ void radio_irq(void)                                // Receiver role: Does nothi
   radio.whatHappened(tx, fail, rx);                   // What happened?
 
   if ( tx ) {                                         // Have we successfully transmitted?
+    radio.startListening();
     Serial.println(F("Send:OK"));
   }
 
   if ( fail ) {                                       // Have we failed to transmit?
+    radio.startListening();
     Serial.println(F("Send:Failed"));
   }
 

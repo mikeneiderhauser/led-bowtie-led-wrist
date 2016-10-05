@@ -25,12 +25,13 @@
 #define LED_PIN A1
 
 #define BRIGHTNESS  10
-#define NUM_LEDS 2
+#define NUM_LEDS 8
 
 CRGB leds[NUM_LEDS];
 
 // Declare RF24 as radio class
 RF24 radio(P_NRF_CE, P_NRF_CSN);
+uint8_t nrf_byte = 0;
 
 // Demonstrates another method of setting up the addresses
 byte address[][5] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC , 0xCE, 0xCC, 0xCE, 0xCC, 0xCE};
@@ -71,8 +72,9 @@ void setup() {
   #endif
   radio.enableDynamicPayloads();                    // Ack payloads are dynamic payloads
   // Open pipes to other node for communication
-  radio.openWritingPipe(address[0]);             // communicate back and forth.  One listens on it, the other talks to it.
-  radio.openReadingPipe(1, address[1]);
+  radio.openWritingPipe(address[1]);             // communicate back and forth.  One listens on it, the other talks to it.
+  radio.openReadingPipe(1, address[0]);
+  radio.startListening();
   #ifdef DEBUG
     radio.printDetails();                             // Dump the configuration of the rf unit for debugging
   #endif
@@ -101,11 +103,9 @@ void radio_irq(void)                                // Receiver role: Does nothi
   }
 
   if ( rx || radio.available()) {                     // Did we receive a message?
-    #ifdef ENABLE_PKT_ACK
-    radio.read(&message_count, sizeof(message_count));
-    Serial.print(F("Ack: "));
-    Serial.println(message_count);
-    #endif
+    radio.read(&nrf_byte, sizeof(nrf_byte));
+    Serial.print(F("NRF RX: "));
+    Serial.println(nrf_byte);
   }
 }
   
