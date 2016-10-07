@@ -67,8 +67,7 @@ uint8_t C2P(uint8_t r, uint8_t c) {
 // If the pixel # is 0xFX, then it's a command instead
 // typedef struct {
 //  uint8_t pixel;
-//  uint8_t brightness:4;
-//  uint8_t color:4;
+//  uint8_t color;
 // } pp_t;
 
 // Pixel off
@@ -104,9 +103,9 @@ void UnpackFrame(uint8_t px_ct, uint8_t *p) {
 		} else {
 			// Color the pixel
 			uint8_t pixel = p[i];
-			uint8_t color = p[i+1] & 0xF;
-			uint8_t brightness = (p[i+1] >> 4) & 0xF;
-			leds[pixel] = ColorFromPalette(currentPalette, color, brightness, currentBlending);
+			uint8_t color = p[i+1];
+			// FIXME: Colors are always 255 brightness...
+			leds[pixel] = ColorFromPalette(currentPalette, color, 255, currentBlending);
 		}
 	}
 }
