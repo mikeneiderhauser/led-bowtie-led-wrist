@@ -5,3 +5,7 @@ Uses Arduino 1.6.12
   RF24
   SPIFlash
   Bounce2
+
+Bowtie editor uses:
+	Python3
+	PyQt5

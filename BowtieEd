@@ -1,0 +1,930 @@
+#!/usr/bin/python3
+
+"""
+BowtieEd - An LED Bowtie Matrix Editor
+"""
+
+import sys
+import os
+from random import (randint)
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+from PyQt5.QtWidgets import (QMainWindow, QApplication, QWidget, QGridLayout, QPushButton, QSpinBox, QLabel, QAction, qApp, QSizePolicy, QColorDialog, QSpinBox, QInputDialog, QFileDialog, QMessageBox, QToolButton, QDialog)
+from PyQt5.QtCore import *
+from PyQt5.QtGui import (QColor, QImage, QPainter, QFont)
+    
+###############################
+# Bowtie functions P2C / C2P
+###############################
+
+# Get a row and column from a pixel #
+def P2C(p):
+    pixel_tbl = [
+	0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 
+        0x80, 0x81, 0x71, 0x61, 0x51, 0x41, 0x31, 0x21, 
+	0x11, 0x01, 0x02, 0x12, 0x22, 0x32, 0x42, 0x52, 
+	0x62, 0x72, 0x82, 0x73, 0x63, 0x53, 0x43, 0x33, 
+	0x23, 0x13, 0x24, 0x34, 0x44, 0x54, 0x64, 0x55, 
+	0x45, 0x35, 0x36, 0x46, 0x56, 0x57, 0x47, 0x37, 
+	0x38, 0x48, 0x58, 0x59, 0x49, 0x39, 0x2A, 0x3A, 
+	0x4A, 0x5A, 0x6A, 0x7B, 0x6B, 0x5B, 0x4B, 0x3B, 
+	0x2B, 0x1B, 0x0C, 0x1C, 0x2C, 0x3C, 0x4C, 0x5C, 
+	0x6C, 0x7C, 0x8C, 0x8D, 0x7D, 0x6D, 0x5D, 0x4D, 
+	0x3D, 0x2D, 0x1D, 0x0D, 0x0E, 0x1E, 0x2E, 0x3E, 
+	0x4E, 0x5E, 0x6E, 0x7E, 0x8E 
+    ]
+
+    idx = pixel_tbl[p]
+    return ((idx >> 4) & 0xF), (idx & 0xF)
+
+# Get a pixel # from row and column
+def C2P(r, c):
+    # Temporary table for decoding from row and column to pixel
+    rc_tbl = [
+        [ 0, 17, 18, 255, 255, 255, 255, 255, 255, 255, 255, 255, 66, 83, 84 ],
+        [ 1, 16, 19, 33, 255, 255, 255, 255, 255, 255, 255, 65, 67, 82, 85 ],
+    	[ 2, 15, 20, 32, 34, 255, 255, 255, 255, 255, 54, 64, 68, 81, 86 ],
+	[ 3, 14, 21, 31, 35, 41, 42, 47, 48, 53, 55, 63, 69, 80, 87 ],
+	[ 4, 13, 22, 30, 36, 40, 43, 46, 49, 52, 56, 62, 70, 79, 88 ],
+	[ 5, 12, 23, 29, 37, 39, 44, 45, 50, 51, 57, 61, 71, 78, 89 ],
+	[ 6, 11, 24, 28, 38, 255, 255, 255, 255, 255, 58, 60, 72, 77, 90 ],
+	[ 7, 10, 25, 27, 255, 255, 255, 255, 255, 255, 255, 59, 73, 76, 91 ],
+	[ 8, 9, 26, 255, 255, 255, 255, 255, 255, 255, 255, 255, 74, 75, 92 ] ]
+
+    return rc_tbl[r][c]
+
+###################################
+# Bowtie Functions P2C / C2P
+###################################
+
+### The underlying data store for a Frame is a QImage
+class Frame(QImage):
+    def __init__(self, columns, rows):
+        super(Frame, self).__init__(columns, rows, QImage.Format_RGB32)
+       
+        # Fill the QImage with solid black
+        self.fill(QColor(0, 0, 0, 255))
+
+    # Set pixels from index
+    def setPixelIdx(self, idx, value):
+        r, c = P2C(idx)
+        if (type(value) is QColor):
+            super(Frame, self).setPixel(c, r, value.rgb())
+        else:
+            super(Frame, self).setPixel(c, r, value)
+
+    # Set pixels directly
+    def setPixel(self, c, r, value):
+        if (type(value) is QColor):
+            super(Frame, self).setPixel(c, r, value.rgb())
+        else:
+            super(Frame, self).setPixel(c, r, value)
+
+    # Get pixels from an index
+    def getPixelIdx(self, idx):
+        r, c = P2C(idx)
+        return QColor(super(Frame, self).pixel(c, r))
+
+    # Get pixels directly
+    def getPixel(self, c, r):
+        return QColor(super(Frame, self).pixel(c, r))
+    
+### The script class for generating frames programatically
+class Script():
+    def __init__(self, fn, r, c):
+        # Size of the area -> scripts should be written for any size
+        self.columns = c
+        self.rows = r
+
+        # Awful idea, but it does work...
+        l_vars = dict()
+        with open(fn) as f:
+            ### Append some boilerplate code (?)
+            scr = "from PyQt5.QtGui import (QColor)\n"
+            scr = scr + "from random import (randint)\n"
+
+            scr = scr + f.read()
+            code = compile(scr, fn, 'exec')
+            exec(code, globals(), l_vars)
+
+        # Imported Script functions to call
+        self.script = l_vars['script']
+
+        # Number of frames in the script
+        self.frames = l_vars['frameCount'](r, c)
+
+        # Is the animation done rendering?
+        self.done = False
+
+    # Report if we're done
+    def isDone(self):
+        return self.done
+
+    def render(self, status, idx):
+        # Reset the render status
+        if (idx == 0):
+            self.done = False
+
+        print("Generating frame: ", str(idx))
+        frame = Frame(self.c, self.r)
+
+        # Using the frame #, render the frame
+        self.script(frame, status, idx)
+
+        if ((not (self.frames == 0)) and (idx == self.frames - 1)):
+            self.done = True
+        
+        return frame
+
+### The widget for the button matrix
+class QMatrix(QWidget):
+    def __init__(self, parent = None):
+        super(QMatrix, self).__init__(parent)
+    
+        self.c = 15
+        self.r = 9
+        self.ct = 93
+        self.frame = 0
+        self.fps = 30
+        self.mode = "Operate"
+        self.buttons = []
+        self.color = QColor(255, 255, 255, 255)
+        # Create the new Frame
+        self.frames = []
+        self.status = []
+        self.modified = False
+        # Script for generating frames
+        self.script = None
+        # Matrix grid layout
+        self.grid = QGridLayout()
+
+        # UNUSED RIGHT NOW
+        self.oldMode = "Operate"
+        self.startPixel = 0
+        self.direction = 0
+        
+        # Enabled / disabled switch
+        for r in range(0, self.r):
+            for c in range(0, self.c):
+                if (C2P(r, c) != 255):
+                    self.status.append(True)
+                else:
+                    self.status.append(False)
+
+        # Set the layout
+        self.setLayout(self.grid)
+
+    ### Load an animation
+    def loadAnimation(self, fn):
+        data = [] 
+
+        # Reset the grid
+        self.regen()
+        
+        # Write out the data
+        fx, ext = os.path.splitext(fn)        
+        if (ext == ".h"):
+            b = open(fn, 'r')
+
+            # Read until we find a line with {
+            done = False
+            while (not done):
+                line = b.readline()
+                if (line == None):
+                    done = True
+                # Found it!
+                if (line.find("{") != -1):
+                    data = []
+
+                    while (line != None):
+                        sline = line.strip(" \n\r{}")
+                        sline = sline.replace(",", " ")
+                        s = sline.split()
+                        if (s != None):
+                            data = data + s
+                        
+                        line = b.readline()
+                        if (line.find("}") != -1):
+                            done = True
+                            break
+            b.close()
+            data = [ int(i,0) for i in data ]
+
+        elif (ext == ".bin"):
+            b = open(fn, 'rb')
+            data = b.read()
+            b.close()
+
+        frame_ct = data[0]
+        fps = data[1]
+
+        pos = 2
+        for i in range(0, frame_ct):
+            # Read in the frame size
+            sz = data[pos]
+            print ("Frame Size: " + str(sz))
+            pos = pos + 1
+
+            # Read in the frame
+            for j in range(0, int(sz / 2)):
+                pixel = data[pos]
+                pos = pos + 1
+                c = data[pos]
+                pos = pos + 1
+                # FIXME: Get Color from index
+                color = QColor(255, 0, 0, 255)
+                
+                # Set the pixels
+                self.frames[i].setPixelIdx(pixel, color)
+
+            # Add the next frame
+            if (i != frame_ct - 1):
+                self.frames.append(Frame(self.c, self.r))
+
+        # Set the frame number to the first one
+        self.frame = 0
+
+        # Update the frame index
+        self.parent().parent().updateFrameIndex(self.frame, len(self.frames))
+
+        # Now update the loaded buttons
+        self.updateMatrix()
+
+    ### Save an animation
+    def saveAnimation(self, fn):
+        # Generate the header
+        data = []
+        data.append(len(self.frames))
+        data.append(int(self.fps))
+
+        # Get the frame data
+        for f in self.frames:
+            fdata = []
+            for idx in range(0, self.ct):
+                color = f.getPixelIdx(idx)
+                color_idx = 5
+                # FIXME: Get color from palette
+                if (color.name() != "#000000"):
+                    fdata.append(idx)
+                    fdata.append(color_idx)
+            # If there's no data, append the blackout command
+            if (len(fdata) == 0):
+                fdata.append(255)
+                fdata.append(0)
+            data.append(len(fdata))
+            data = data + fdata
+
+        # Write out the data
+        fx, ext = os.path.splitext(fn)        
+        if (ext == ".h"):
+            b = open(fn, 'w')
+            if (b == None):
+                print ("Unable to open the file " + fn + " for writing!")
+                return
+            
+            b.write("{\n")
+            ct = 0
+            # Write the header
+            b.write(hex(data[0]))
+            b.write(", ")
+            b.write(hex(data[1]))
+            b.write(",\n")
+
+            pos = 2
+            for f in self.frames:
+                # Write out the frame length 
+                flen = data[pos]
+                b.write(hex(data[pos]))
+                b.write(', ')
+                pos = pos + 1
+
+                # Write out the frame bytes
+                for i in range(0, flen):
+                    b.write(hex(data[pos + i]))
+                    if ((pos + i) != (len(data) - 1)):
+                        b.write(', ')
+                pos = pos + flen
+                b.write("\n")
+            b.write("};\n")
+            b.close() 
+
+        elif (ext == ".bin"):
+            b = open(fn, 'wb')
+            if (b == None):
+                print ("Unable to open the file " + fn + " for writing!")
+                return
+            bd = bytes(data)
+            b.write(bd)
+            b.close()
+
+    ### Save the old mode
+    def saveMode(self):
+        self.oldMode = self.mode
+
+    ### Set the number of columns and regenerate the array
+    def setCol(self, c):
+        self.c = c
+        self.regen()
+
+    ### Set the Y Dimension and regenerate the array
+    def setRow(self, r):
+        self.r = r
+        self.regen()
+
+    ### Delete all frames
+    def deleteAllFrames(self):
+        self.frames = []
+        self.frames.append(Frame(self.c, self.r))
+        self.frame = 0
+
+    ### Regenerate the array with the current parameters
+    def regen(self):
+        # Delete old push buttons
+        for p in self.buttons:
+            p.hide()
+            p.deleteLater()
+        self.buttons = []
+        self.status = []
+        self.script = None
+            
+        # Size policy for the buttons
+        sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sp.setHorizontalStretch(True)
+        sp.setVerticalStretch(True)
+        sp.setHeightForWidth(True)
+
+        for px in range(0, self.ct):
+           r, c = P2C(px)
+           p = QToolButton()
+           p.setObjectName(str(px))
+           self.grid.addWidget(p, r, c, 1, 1)
+           self.buttons.append(p)
+            
+           self.status.append(True)
+           self.setVisible(True)
+           self.setEnabled(True)
+
+        # Apply the policies and styles for the buttons
+        for p in self.buttons:
+            p.clicked.connect(lambda: self.push())
+            p.setStyleSheet('border: 0px; background-color: black; color: black')
+            p.setMinimumWidth(25)
+            p.setMinimumHeight(25)
+            p.setSizePolicy(sp)
+
+        # Delete all of the frames
+        self.deleteAllFrames()
+        
+        # Update the frame index
+        self.parent().parent().updateFrameIndex(self.frame, len(self.frames))
+
+    ### Behavior when pressing a matrix button
+    def push(self):
+        pb = self.sender()
+        pbNum = int(pb.objectName())
+        print (pbNum)
+        if (self.mode == "Layout"):
+            self.Modified = True
+            if (self.status[pbNum] == True):
+                pb.setStyleSheet('border: 0px; background-color: black; color: black')
+                self.status[pbNum] = False
+            else:
+                pb.setStyleSheet('border: 0px; background-color: white; color: white')
+                self.status[pbNum] = True
+        elif (self.mode == "Direction"):
+            # Check if the pixel makes sense (one of the opposite corners are all that supported for now...)
+            if ((pbNum == 0) or (pbNum == self.ct - 1)):
+                # Save the pixel
+                self.startPixel = pbNum
+
+                # Reset the mode
+                self.mode = self.oldMode
+
+                # Get the direction to go from here (Up down / Left Right)
+                items = ("Up/Down", "Left/Right")
+                item, ok = QInputDialog.getItem(self, "LED Chain Order", "Select the LED Chain Order", items, 0, False)
+                if (ok and item):
+                    if (item == "Up/Down"):
+                        self.direction = 0
+                    else:
+                        self.direction = 1
+
+                # Pop a message box to say we're done
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("LED Order Set!")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec_()
+
+                # Regenerate the grid
+                self.regen()
+
+            # Pop a message when we can't set one because we don't know the corners...
+            elif ((self.status[0] == False) or (self.status[self.ct - 1]) == False):
+                # Pop a message box to say we're done
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("The corners are disabled, renable them first")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec_()
+                self.mode = "Operate"
+
+            # FIXME: Make this more flexible
+            else:
+                # Pop a message box to say we're done
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Please select either the upper left or lower right corner")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec_()
+        else:
+            pb.setStyleSheet('border: 0px; background-color: ' + self.color.name() + '; color: ' + self.color.name())
+            self.frames[self.frame].setPixelIdx(pbNum, self.color)
+
+    ### Switch the current operating mode
+    def setMode(self):
+        if (self.mode == "Layout"):
+            self.mode = "Operate"
+
+            # Disable the buttons that aren't operating
+            for p in self.buttons:
+                pbNum = int(p.objectName())
+                if (self.status[pbNum] == False):
+                    p.setEnabled(False)
+                    p.setVisible(False)
+                else:
+                    p.setEnabled(True)
+                    p.setVisible(True)
+
+            # Update the buttons with the new colors
+            self.updateMatrix()
+
+        else:
+            self.mode = "Layout"
+            # We haven't modified anything yet...
+            self.Modified = False
+            # Enable all of the buttons in layout mode to allow turning things on/off
+            for p in self.buttons:
+                # Set the current color status
+                if (p.isVisible()):
+                    p.setStyleSheet('border: 0px; background-color: white; color: white')
+                else:
+                    p.setStyleSheet('border: 0px; background-color: black; color: black')
+
+                p.setEnabled(True)
+                p.setVisible(True)
+
+    ### Move to the next frame
+    def frameUp(self):
+        # If we're not using a script, it's being handled manually
+        # If we're done rendering the frames, don't re-render
+        if ((self.script == None) or (self.script.isDone())):
+            self.frame = self.frame + 1
+
+            if (self.frame >= len(self.frames)):
+                self.frame = 0
+        
+        # If we are using a script, generate the frame
+        else:
+            self.frame = self.frame + 1
+            self.frames.append(self.script.render(self.status, self.frame))
+
+        # Update the frame index
+        self.parent().parent().updateFrameIndex(self.frame, len(self.frames))
+
+        # Now update the loaded buttons
+        self.updateMatrix()
+
+    ### Move to the next frame
+    def frameAdd(self):
+        # Add the frame
+        self.frames.append(Frame(self.c, self.r))
+
+        # Set the frame to the new frame
+        self.frame = len(self.frames) - 1
+
+        # Update the frame index
+        self.parent().parent().updateFrameIndex(self.frame, len(self.frames))
+
+        # Now update the loaded buttons
+        self.updateMatrix()
+
+    ### Move to the previous frame
+    def frameDown(self):
+        self.frame = self.frame - 1
+
+        # If we're below 0, loop back to the last frame
+        if (self.frame < 0):
+            self.frame = len(self.frames) - 1
+
+        # Update the frame index
+        self.parent().parent().updateFrameIndex(self.frame, len(self.frames))
+
+        # Now update the loaded buttons
+        self.updateMatrix()
+
+    ### Update the button matrix from the currently loaded frame
+    def updateMatrix(self):
+        for idx in range(0, len(self.buttons)):
+            pb = self.buttons[idx]
+            if (self.status[idx]):
+                color = self.frames[self.frame].getPixelIdx(idx)
+                pb.setStyleSheet('border: 0px; background-color: ' + color.name() + '; color: ' + color.name())
+            else:
+                pb.setStyleSheet('border: 0px; background-color: black; color: black')
+
+    ### Blit a QImage to the current frame
+    def blit(self, qmg):
+        dest = QPoint(0, 0)
+        qp = QPainter(self.frames[self.frame])
+        qp.drawImage(dest, qmg)
+        qp.end()
+
+        # Update the loaded buttons
+        self.updateMatrix()
+
+    ### Save a frame as an image file
+    def saveFrame(self, fn):
+        if (not self.frames[self.frame].save(fn)):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Unable to save the frame!")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+    
+    ### Set the script
+    def setScript(self, scr):
+        print("scr: ", scr)
+        self.script = Script(scr, self.c, self.r)
+
+        # Generate frame 0
+        self.frame = 0
+        self.frames = [ self.script.render(self.status, 0) ]
+
+        # Update the loaded buttons
+        self.updateMatrix()
+
+    ### Matrix Export active pixel list
+    def exportActive(self):
+        for idx in range(0, len(self.buttons)):
+            if (self.status[idx]):
+                color = self.frames[self.frame].getPixelIdx(idx)
+                if (color.name() != "#000000"):
+                    print (self.buttons[idx].objectName())
+                    print (color.name())
+
+class PalettePicker(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self.setWindowTitle("Select Palette Colors")
+        layout = QGridLayout()
+
+        for i in range(0,16):
+            lbl = QLabel("Color " + str(i))
+            layout.addWidget(lbl, i, 0)
+            b = QPushButton(str(i))
+            layout.addWidget(b, i, 1)
+            b.setStyleSheet('border: 0px; background-color: white; color: white')
+            sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            sp.setHorizontalStretch(True)
+            sp.setVerticalStretch(True)
+            sp.setHeightForWidth(True)
+            b.setSizePolicy(sp)
+            b.setMinimumWidth(75)
+            b.setMinimumHeight(25)
+
+        self.done = QPushButton("Done");
+        self.done.clicked.connect(self.doDone)
+        layout.addWidget(self.done, 17, 1)
+        self.setLayout(layout)
+
+    def doDone(self):
+        self.close()
+
+class MatrixEd(QMainWindow):
+    def __init__(self):
+        super(QMainWindow, self).__init__()
+        
+        #############
+        # Main Widget
+        #############
+        self.qw = QWidget()
+        self.mainLayout = QGridLayout()
+        
+        # Build the box first so that we can set signals
+        self.matrix = QMatrix()
+        self.mainLayout.addWidget(self.matrix, 1, 0, 1, 4)
+
+        # Play button and time between frames
+        self.PlayButton = QPushButton("Play")
+        self.PlayButton.clicked.connect(self.playBtn)
+        self.mainLayout.addWidget(self.PlayButton, 0, 0, 1, 2)
+        self.TimerBox = QSpinBox()
+        self.TimerBox.setValue(30)
+        self.TimerBox.setSingleStep(1)
+        self.TimerBox.valueChanged.connect(self.updateTimerTickrate)
+        self.mainLayout.addWidget(self.TimerBox, 0, 2)
+        self.TimerBoxLabel = QLabel("FPS")
+        self.mainLayout.addWidget(self.TimerBoxLabel, 0, 3)
+
+        # Build the timer object
+        self.Timer = QTimer()
+        self.Timer.timeout.connect(self.timerTick)
+
+        # Frame Left Button
+        self.FrameLeft = QPushButton("<")
+        self.FrameLeft.clicked.connect(self.matrix.frameDown)
+        self.mainLayout.addWidget(self.FrameLeft, 2, 0)
+
+        # Frame Index
+        self.FrameIdx = QLabel("Frame: 0001 of 0001")
+        self.monoFont = QFont("Monospace")
+        self.monoFont.setStyleHint(QFont.TypeWriter)
+        self.FrameIdx.setFont(self.monoFont)
+        self.mainLayout.addWidget(self.FrameIdx, 2, 1)
+
+        # Frame Right Button
+        self.FrameRight = QPushButton(">")
+        self.FrameRight.clicked.connect(self.matrix.frameUp)
+        self.mainLayout.addWidget(self.FrameRight, 2, 2)
+        
+        # Add Frame
+        self.FrameAdd = QPushButton(">+")
+        self.FrameAdd.clicked.connect(self.matrix.frameAdd)
+        self.mainLayout.addWidget(self.FrameAdd, 2, 3)
+
+        ##############
+        # Top menu bar
+        ##############
+        self.menubar = self.menuBar()
+
+        # File Menu
+        self.newAction = QAction('&New', self)
+        self.newAction.triggered.connect(self.matrix.regen)
+
+        self.saveAction = QAction('&Save ...', self)
+        self.saveAction.triggered.connect(self.saveAnimation)
+        
+        self.loadAction = QAction('&Load ...', self)
+        self.loadAction.triggered.connect(self.loadAnimation)
+
+        self.exportArrayAction = QAction('Export active pixel array ...', self)
+        self.exportArrayAction.triggered.connect(self.exportArray)
+        
+        self.loadScriptAction = QAction('Load Script ...', self)
+        self.loadScriptAction.triggered.connect(self.pickScript)
+
+        self.exitAction = QAction('&Exit', self)
+        self.exitAction.setShortcut('Ctrl+Q')
+        self.exitAction.triggered.connect(qApp.quit)
+
+        self.fileMenu = self.menubar.addMenu('&File')
+        self.fileMenu.addAction(self.newAction)
+        self.fileMenu.addAction(self.saveAction)
+        self.fileMenu.addAction(self.loadAction)
+        self.fileMenu.addAction(self.exportArrayAction)
+        #self.fileMenu.addAction(self.loadScriptAction)
+        self.fileMenu.addAction(self.exitAction)
+
+        # Layout Menu
+        self.layoutAction = QAction('&Modify LED Layout Mode', self)
+        self.layoutAction.setCheckable(True)
+        self.layoutAction.triggered.connect(self.matrix.setMode)
+
+        self.XDimAction = QAction('Set the Column Count', self)
+        self.XDimAction.triggered.connect(self.setColCount)
+
+        self.YDimAction = QAction('Set the Row Count', self)
+        self.YDimAction.triggered.connect(self.setRowCount)
+        
+        self.pixelOrderingAction = QAction('Set Pixel Ordering Mode', self)
+        self.pixelOrderingAction.triggered.connect(self.setClockDirection)
+
+        #self.layoutMenu = self.menubar.addMenu('&Layout')
+
+        ### Removed for now...
+        #self.layoutMenu.addAction(self.layoutAction)
+        #self.layoutMenu.addAction(self.XDimAction)
+        #self.layoutMenu.addAction(self.YDimAction)
+        #self.layoutMenu.addAction(self.pixelOrderingAction)
+
+        # Content Menu
+        #self.paletteAction = QAction('Configure Color Palette', self)
+        #self.paletteAction.triggered.connect(self.PickColorPalette)
+        self.colorAction = QAction('Select Color', self)
+        self.colorAction.triggered.connect(self.PickColor)
+
+        self.importAction = QAction('Import Image as Current Frame', self)
+        self.importAction.triggered.connect(self.ImportFrame)
+
+        self.exportAction = QAction('Export Current Frame as Image', self)
+        self.exportAction.triggered.connect(self.ExportFrame)
+
+        self.contentMenu = self.menubar.addMenu('&Content')
+        #self.contentMenu.addAction(self.paletteAction)
+        self.contentMenu.addAction(self.colorAction)
+        self.contentMenu.addAction(self.importAction)
+        self.contentMenu.addAction(self.exportAction)
+
+        # Help Menu
+        self.helpAction = QAction('&Help', self)
+        self.aboutAction = QAction('&About', self)
+
+        self.helpMenu = self.menubar.addMenu('&Help')
+
+        self.helpMenu.addAction(self.helpAction)
+        self.helpMenu.addAction(self.aboutAction)
+
+        #####################
+        # Set the main layout
+        #####################
+        self.qw.setLayout(self.mainLayout)
+        self.setCentralWidget(self.qw)
+        
+        # Set the tile
+        self.setWindowTitle('MatrixEd')
+        
+        # Generate the initial grid
+        self.matrix.regen()
+
+        # Show the window
+        self.show()
+    
+    ############################
+    # Set the number of Columns
+    ############################
+    def setColCount(self):
+        c = -1
+        while(c <= 0):
+            c, ok = QInputDialog.getInt(self, 'Set the Number of Columns', 'Enter the number of Columns', self.matrix.c, 1)
+        if (not (c == self.matrix.c)):
+            self.matrix.setCol(c)
+    
+    ############################
+    # Set the Y Dimension dialog
+    ############################
+    def setRowCount(self):
+        self.qid = QInputDialog()
+        r = -1
+        while(r <= 0):
+            r, ok = QInputDialog.getInt(self, 'Set the Number of Rows', 'Enter the number of Rows:', self.matrix.r, 1)
+        if (not (r == self.matrix.r)):
+            self.matrix.setRow(r)
+
+    ########################
+    # Update the frame index
+    ########################
+    def updateFrameIndex(self, idx, total):
+        self.FrameIdx.setText("Frame: " + str(idx + 1).zfill(4) + " of " + str(total).zfill(4))
+    
+    ######################
+    # Update the fps value
+    ######################
+    def updateFPS(self, fps):
+        self.TimerBox.setValue(fps)
+
+    ###############################
+    # Start/stop the playback timer
+    ###############################
+    def playBtn(self):
+        if (self.PlayButton.text() == "Play"):
+            # Start the timer
+            if (self.TimerBox.value() == 0):
+                self.Timer.start(1000) 
+            else:
+                self.Timer.start((1 / self.TimerBox.value()) * 1000)
+            
+            # Set the name of the button to pause
+            self.PlayButton.setText("Pause")
+        else:
+            # Stop the timer
+            self.Timer.stop()
+
+            # Update the button text
+            self.PlayButton.setText("Play")
+    
+    #################################
+    # Callback for the playback timer
+    #################################
+    def timerTick(self):
+        # Move to the next frame 
+        self.matrix.frameUp()
+
+    ##########################################################
+    # Callback for the playback timer's tickrate being changed
+    ##########################################################
+    def updateTimerTickrate(self):
+        self.matrix.FPS = self.TimerBox.value()
+
+        # If the timer is running, change it
+        if (self.Timer.isActive):
+            if (self.TimerBox.value() == 0):
+                self.Timer.setInterval(1000) 
+            else:
+                self.Timer.setInterval((1 / self.TimerBox.value()) * 1000)
+
+    ##########################################################
+    # Color picker menu item
+    ##########################################################
+    def PickColor(self):
+        color = QColorDialog.getColor()
+        if (color.isValid()):
+            self.matrix.color = color
+
+    ##########################################################
+    # Dialog for picking palette colors
+    ##########################################################
+    def PickColorPalette(self):
+        pp = PalettePicker(self).exec_()
+        print (pp)
+    
+    ##########################################################
+    # Export Array of Pixels for use in Arduino
+    ##########################################################
+    def exportArray(self):
+        fn, fm = QFileDialog.getSaveFileName(self, 'Save list of active (not black/off) pixels ...', None, "C Header (*.h);;All Files (*)")
+        if (fn != None):
+            self.matrix.exportActive()
+    
+    ##########################################################
+    # Set the clock direction
+    # Note: Only the first part of this dialog tree is here
+    ##########################################################
+    def setClockDirection(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText("Select the first LED in the Chain")
+        msg.setInformativeText("Press the button in the matrix corresponding to the first LED in the chain")
+        msg.setWindowTitle("First LED")
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
+
+        # Set the mode to picking a direction
+        self.matrix.saveMode()
+        self.matrix.mode = "Direction"
+    
+    ##########################################################
+    # Dialog for loading an animation
+    ##########################################################
+    def loadAnimation(self):
+        fn, fm = QFileDialog.getOpenFileName(self, 'Load animation ...', None, "Header File (*.h);;Binary File (*.bin);;All Files (*)")  
+        if (fn != None):
+            self.matrix.loadAnimation(fn)
+
+    ##########################################################
+    # Dialog for saving an animation
+    ##########################################################
+    def saveAnimation(self):
+        fn, fm = QFileDialog.getSaveFileName(self, 'Save animation ...', None, "Header File (*.h);;Binary File (*.bin);;All Files (*)")
+        fx, ext = os.path.splitext(fn)        
+        if (ext == ""):
+            if (fm == "Header File (*.h)"):
+                fn = fn + ".h"
+            else:
+                fn = fn + ".bin"
+        if (fn != None):
+            self.matrix.saveAnimation(fn)
+
+    ##########################################################
+    # Dialog for importing a frame
+    ##########################################################
+    def ImportFrame(self):
+        fn, fm = QFileDialog.getOpenFileName(self, 'Open frame...', None, "Images (*.bmp *.gif *.jpg *.jpeg *.png);;All Files (*)")  
+        if (fn != None):
+            print (fn)
+            img = QImage(fn)
+            if (img != None):
+                self.matrix.blit(img)
+
+    ##########################################################
+    # Dialog for exporting a frame
+    ##########################################################
+    def ExportFrame(self):
+        fn, fm = QFileDialog.getSaveFileName(self, 'Save as...', None, "Images (*.bmp *.jpg *.jpeg *.png);;All Files (*)")
+        if (fn != None):
+            self.matrix.saveFrame(fn)
+    
+    ##########################################################
+    # Dialog for picking a script
+    ##########################################################
+    def pickScript(self):
+        fn, fm = QFileDialog.getOpenFileName(self, 'Load Script...', 'Scripts', "Scripts (*.scr);;All Files (*)")
+        if (fn != None):
+           self.matrix.setScript(fn)
+    
+    #####################
+    # Key Press Handler
+    #####################
+    def keyPressEvent(self, e):
+        if (e.key() == Qt.Key_Escape):
+            self.close()
+        if (e.key() == Qt.Key_Greater):
+            self.matrix.frameUp()
+        if (e.key() == Qt.Key_Less):
+            self.matrix.frameDown()
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    prog = MatrixEd()
+    sys.exit(app.exec_())
