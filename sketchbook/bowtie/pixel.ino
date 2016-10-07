@@ -66,17 +66,17 @@ uint8_t C2P(uint8_t r, uint8_t c) {
 // If the pixel # is 0xFX, then it's a command instead
 // typedef struct {
 //  uint8_t pixel;
-//  uint8_t color;
+//  uint8_t brightness:4;
+//  uint8_t color:4;
 // } pp_t;
 
-// Black out the pixels
-#define PP_CMD_BLACKOUT		0
-// Set the brightness
-#define PP_CMD_BRIGHTNESS	1
+// Pixel off
+#define PP_CMD_BLACK		0
+// Pixel full on
+#define PP_CMD_WHITE		1
+
 // Set the color of the companion wrist corsage
 #define PP_CMD_SET_WRIST_COLOR	2
-
-static int brightness = 255;
 
 // Unpack array of pixels with palette into display array
 void UnpackFrame(uint8_t px_ct, uint8_t *p) {
@@ -90,20 +90,22 @@ void UnpackFrame(uint8_t px_ct, uint8_t *p) {
 		// It's a command
 		if (p[i] & 0xF0 == 0xF0) {
 			switch(p[i] & 0xF) {
-			case PP_CMD_BLACKOUT:
-				for (ct=0; ct<PIXEL_CT; ct++)
-					leds[ct] = CRGB::Black;
+			case PP_CMD_BLACK:
+				leds[pixel] = CRGB::Black;
 				break;
-			case PP_CMD_BRIGHTNESS:
-				brightness = p[i+1];
+			case PP_CMD_WHITE:
+				leds[pixel] = CRGB::White;
 				break;
 			default:
 				break;
 			}
-		// Otherwise, it's a pixel
+		// Otherwise, it's pixel data
 		} else {
 			// Color the pixel
-			leds[p[i]] = ColorFromPalette(currentPalette, p[i+1], brightness, currentBlending);
+			uint8_t pixel = p[i];
+			uint8_t color = p[i+1] & 0xF;
+			uint8_t brightness = (p[i+1] >> 4) & 0xF;
+			leds[pixel] = ColorFromPalette(currentPalette, color, brightness, currentBlending);
 		}
 	}
 }
