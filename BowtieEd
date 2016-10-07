@@ -182,7 +182,7 @@ class QMatrix(QWidget):
         # Reset the grid
         self.regen()
         
-        # Write out the data
+        # Get the file type
         fx, ext = os.path.splitext(fn)        
         if (ext == ".h"):
             b = open(fn, 'r')
@@ -219,7 +219,8 @@ class QMatrix(QWidget):
         frame_ct = data[0]
         fps = data[1]
 
-        pos = 2
+        # Ignore the offsets, we don't need them
+        pos = 2 + frame_ct * 2
         for i in range(0, frame_ct):
             # Read in the frame size
             sz = data[pos]
@@ -227,7 +228,7 @@ class QMatrix(QWidget):
             pos = pos + 1
 
             # Read in the frame
-            for j in range(0, int(sz / 2)):
+            for j in range(0, int(sz)):
                 pixel = data[pos]
                 pos = pos + 1
                 c = data[pos]
@@ -254,13 +255,21 @@ class QMatrix(QWidget):
     ### Save an animation
     def saveAnimation(self, fn):
         # Generate the header
-        data = []
-        data.append(len(self.frames))
-        data.append(int(self.fps))
+        header = []
+        header.append(len(self.frames))
+        header.append(int(self.fps))
+
+        # Frame data
+        fr = []
+
+        # Frame offsets
+        base = len(self.frames) * 2 + 2
+        frame_offsets = []
 
         # Get the frame data
         for f in self.frames:
             fdata = []
+            frame_offsets.append(base)
             for idx in range(0, self.ct):
                 color = f.getPixelIdx(idx)
                 color_idx = 5
@@ -272,8 +281,9 @@ class QMatrix(QWidget):
             if (len(fdata) == 0):
                 fdata.append(255)
                 fdata.append(0)
-            data.append(len(fdata))
-            data = data + fdata
+            fdata.insert(0, int(len(fdata)/2))
+            fr.append(fdata)
+            base = base + len(fdata)
 
         # Write out the data
         fx, ext = os.path.splitext(fn)        
@@ -286,36 +296,49 @@ class QMatrix(QWidget):
             b.write("{\n")
             ct = 0
             # Write the header
-            b.write(hex(data[0]))
+            b.write(hex(header[0]))
             b.write(", ")
-            b.write(hex(data[1]))
+            b.write(hex(header[1]))
             b.write(",\n")
 
-            pos = 2
-            for f in self.frames:
-                # Write out the frame length 
-                flen = data[pos]
-                b.write(hex(data[pos]))
-                b.write(', ')
-                pos = pos + 1
+            # Write out the offset data
+            for f in frame_offsets:
+                b.write(hex((f & 0xFF) >> 8))
+                b.write(", ")
+                b.write(hex(f & 0xFF))
+                b.write(", ")
+            b.write("\n");
 
-                # Write out the frame bytes
-                for i in range(0, flen):
-                    b.write(hex(data[pos + i]))
-                    if ((pos + i) != (len(data) - 1)):
+            # Write out the frame data
+            for f in fr:
+                for i in range(0, len(f)):
+                    b.write(hex(f[i]))
+                    if (i != (len(f) - 1)):
                         b.write(', ')
-                pos = pos + flen
+                if (f != fr[-1]):
+                    b.write(',')
                 b.write("\n")
             b.write("};\n")
             b.close() 
 
+        # Write out the binary data
         elif (ext == ".bin"):
             b = open(fn, 'wb')
             if (b == None):
                 print ("Unable to open the file " + fn + " for writing!")
                 return
-            bd = bytes(data)
+            bd = bytes(header)
             b.write(bd)
+            
+            # Write out the offset data
+            for f in frame_offsets:
+                od = ((f >> 8) & 0xFF, f & 0xFF)
+                b.write(bytes(od))
+
+            # Write out the frame data
+            for f in fr:
+                b.write(bytes(f))
+
             b.close()
 
     ### Save the old mode
@@ -602,7 +625,7 @@ class PalettePicker(QDialog):
     def doDone(self):
         self.close()
 
-class MatrixEd(QMainWindow):
+class BowtieEd(QMainWindow):
     def __init__(self):
         super(QMainWindow, self).__init__()
         
@@ -743,7 +766,7 @@ class MatrixEd(QMainWindow):
         self.setCentralWidget(self.qw)
         
         # Set the tile
-        self.setWindowTitle('MatrixEd')
+        self.setWindowTitle('BowtieEd')
         
         # Generate the initial grid
         self.matrix.regen()
@@ -926,5 +949,5 @@ class MatrixEd(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    prog = MatrixEd()
+    prog = BowtieEd()
     sys.exit(app.exec_())
