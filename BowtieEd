@@ -79,31 +79,76 @@ Heat = [
 Palettes = [ Rainbow, Party, Heat ]
 Palette_Names = [ "Rainbow", "Party", "Heat" ]
 
+# Get a color from a palette
+# Based on the algorithm in FastLED
+def CFP(palette, index):
+    hi4 = index >> 4
+    lo4 = index & 0xF
+    entry = palette[hi4]
+
+    # Assign initial rgb values
+    r = entry.getRgb()[0]
+    g = entry.getRgb()[1]
+    b = entry.getRgb()[2]
+
+    if (lo4 != 0):
+        if (hi4 == 15):
+            entry = palette[0]
+        else:
+            entry = palette[hi4 + 1]
+
+        f2 = lo4 << 4
+        f1 = 255 - f2
+
+        rp = r
+        r = ((r * f1) >> 8) & 0xFF
+        rp = ((rp * f2) >> 8) & 0xFF
+        r = r + rp
+
+        gp = g
+        g = ((g * f1) >> 8) & 0xFF
+        gp = ((gp * f2) >> 8) & 0xFF
+        g = g + gp
+
+        bp = b
+        b = ((b * f1) >> 8) & 0xFF
+        bp = ((bp * f2) >> 8) & 0xFF
+        b = b + bp
+
+    return QColor(r, g, b, 0xFF)
+
 ###################################
 # Frame Class
 ###################################
 ### The underlying data store for a Frame is a QImage
 class Frame(QImage):
-    def __init__(self, columns, rows):
-        super(Frame, self).__init__(columns, rows, QImage.Format_RGB32)
+    def __init__(self, columns, rows, palette):
+        super(Frame, self).__init__(columns, rows, QImage.Format_Indexed8)
+
+        # Generate the color table using the default palette
+        self.genColorTable(Palettes[palette])
        
-        # Fill the QImage with solid black
-        self.fill(QColor(0, 0, 0, 255))
+        # Fill the QImage with the first color
+        self.fill(0)
+
+    # Generate QImage 256 color palette from palette
+    def genColorTable(self, palette):
+        # Generate the color table
+        self.colorTable = []
+        for i in range(0, 255):
+            self.colorTable.append(CFP(palette, i).rgb())
+
+        # Set the color table
+        self.setColorTable(self.colorTable)
 
     # Set pixels from index
     def setPixelIdx(self, idx, value):
         r, c = P2C(idx)
-        if (type(value) is QColor):
-            super(Frame, self).setPixel(c, r, value.rgb())
-        else:
-            super(Frame, self).setPixel(c, r, value)
+        super(Frame, self).setPixel(c, r, value)
 
     # Set pixels directly
     def setPixel(self, c, r, value):
-        if (type(value) is QColor):
-            super(Frame, self).setPixel(c, r, value.rgb())
-        else:
-            super(Frame, self).setPixel(c, r, value)
+        super(Frame, self).setPixel(c, r, value)
 
     # Get pixels from an index
     def getPixelIdx(self, idx):
@@ -151,7 +196,7 @@ class Script():
             self.done = False
 
         print("Generating frame: ", str(idx))
-        frame = Frame(self.c, self.r)
+        frame = Frame(self.c, self.r, self.palette)
 
         # Using the frame #, render the frame
         self.script(frame, status, idx)
@@ -175,6 +220,7 @@ class QMatrix(QWidget):
         self.buttons = []
         self.palette = 0
         self.color = 0
+        self.eraser = False
 
         # Create the new Frame
         self.frames = []
@@ -262,12 +308,11 @@ class QMatrix(QWidget):
                 pos = pos + 1
                 
                 # Set the pixels
-                color = Palettes[self.palette][c >> 4]
-                self.frames[i].setPixelIdx(pixel, color)
+                self.frames[i].setPixelIdx(pixel, c)
 
             # Add the next frame
             if (i != frame_ct - 1):
-                self.frames.append(Frame(self.c, self.r))
+                self.frames.append(Frame(self.c, self.r, self.palette))
 
         # Set the frame number to the first one
         self.frame = 0
@@ -387,8 +432,10 @@ class QMatrix(QWidget):
     ### Delete all frames
     def deleteAllFrames(self):
         self.frames = []
-        self.frames.append(Frame(self.c, self.r))
+        self.frames.append(Frame(self.c, self.r, self.palette))
         self.frame = 0
+        self.palette = 0
+        self.color = 0
 
     ### Regenerate the array with the current parameters
     def regen(self):
@@ -491,9 +538,18 @@ class QMatrix(QWidget):
                 msg.exec_()
         ### Set color
         else:
-            color = Palettes[self.palette][self.color]
+            if (self.eraser == True):
+                color = QColor(0, 0, 0, 255)
+                # Don't set the color for disabled pixels...
+            else:
+                self.frames[self.frame].setPixelIdx(pbNum, self.color << 4)
+                color = CFP(Palettes[self.palette], self.color << 4)
+
             pb.setStyleSheet('border: 0px; background-color: ' + color.name() + '; color: ' + color.name())
-            self.frames[self.frame].setPixelIdx(pbNum, color)
+
+    ### Toggle the eraser
+    def eraserToggle(self):
+        self.eraser = not self.eraser
 
     ### Switch the current operating mode
     def setMode(self):
@@ -552,7 +608,7 @@ class QMatrix(QWidget):
     ### Move to the next frame
     def frameAdd(self):
         # Add the frame
-        self.frames.append(Frame(self.c, self.r))
+        self.frames.append(Frame(self.c, self.r, self.palette))
 
         # Set the frame to the new frame
         self.frame = len(self.frames) - 1
@@ -669,7 +725,9 @@ class PalettePicker(QDialog):
         self.done.clicked.connect(self.doDone)
         layout.addWidget(self.done, 19, 1)
         self.setLayout(layout)
+
         self.color = color
+        self.palette = palette
 
     def doSelect(self):
         pb = self.sender()
@@ -680,6 +738,7 @@ class PalettePicker(QDialog):
 
     def doPalette(self):
         p = self.picker.currentIndex()
+        self.palette = p
         for ct in range(0, len(self.buttons)):
             self.buttons[ct].setStyleSheet('border: 0px; background-color: ' + Palettes[p][ct].name() + '; color: ' + Palettes[p][ct].name())
 
@@ -770,21 +829,28 @@ class BowtieEd(QMainWindow):
         self.fileMenu.addAction(self.exportArrayAction)
         #self.fileMenu.addAction(self.loadScriptAction)
         self.fileMenu.addAction(self.exitAction)
+        
+        # Edit Menu
+        self.eraseAction = QAction('Eraser', self)
+        self.eraseAction.setCheckable(True)
+        self.eraseAction.triggered.connect(self.matrix.eraserToggle)
+        self.colorAction = QAction('Select Color', self)
+        self.colorAction.triggered.connect(self.PickColorPalette)
+
+        self.editMenu = self.menubar.addMenu('Edit')
+        self.editMenu.addAction(self.eraseAction)
+        self.editMenu.addAction(self.colorAction)
 
         # Layout Menu
-        self.layoutAction = QAction('&Modify LED Layout Mode', self)
-        self.layoutAction.setCheckable(True)
-        self.layoutAction.triggered.connect(self.matrix.setMode)
-
-        self.XDimAction = QAction('Set the Column Count', self)
-        self.XDimAction.triggered.connect(self.setColCount)
-
-        self.YDimAction = QAction('Set the Row Count', self)
-        self.YDimAction.triggered.connect(self.setRowCount)
-        
-        self.pixelOrderingAction = QAction('Set Pixel Ordering Mode', self)
-        self.pixelOrderingAction.triggered.connect(self.setClockDirection)
-
+        #self.layoutAction = QAction('&Modify LED Layout Mode', self)
+        #self.layoutAction.setCheckable(True)
+        #self.layoutAction.triggered.connect(self.matrix.setMode)
+        #self.XDimAction = QAction('Set the Column Count', self)
+        #self.XDimAction.triggered.connect(self.setColCount)
+        #self.YDimAction = QAction('Set the Row Count', self)
+        #self.YDimAction.triggered.connect(self.setRowCount)
+        #self.pixelOrderingAction = QAction('Set Pixel Ordering Mode', self)
+        #self.pixelOrderingAction.triggered.connect(self.setClockDirection)
         #self.layoutMenu = self.menubar.addMenu('&Layout')
 
         ### Removed for now...
@@ -794,17 +860,12 @@ class BowtieEd(QMainWindow):
         #self.layoutMenu.addAction(self.pixelOrderingAction)
 
         # Content Menu
-        self.colorAction = QAction('Select Color', self)
-        self.colorAction.triggered.connect(self.PickColorPalette)
-
         self.importAction = QAction('Import Image as Current Frame', self)
         self.importAction.triggered.connect(self.ImportFrame)
-
         self.exportAction = QAction('Export Current Frame as Image', self)
         self.exportAction.triggered.connect(self.ExportFrame)
 
         self.contentMenu = self.menubar.addMenu('&Content')
-        self.contentMenu.addAction(self.colorAction)
         self.contentMenu.addAction(self.importAction)
         self.contentMenu.addAction(self.exportAction)
 
@@ -911,7 +972,9 @@ class BowtieEd(QMainWindow):
     def PickColorPalette(self):
         pp = PalettePicker(self)
         pp.exec_()
+        self.matrix.palette = pp.palette
         self.matrix.color = pp.color
+        self.matrix.updateMatrix()
     
     ##########################################################
     # Export Array of Pixels for use in Arduino
