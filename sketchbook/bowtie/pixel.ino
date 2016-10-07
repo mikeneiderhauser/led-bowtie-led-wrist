@@ -54,6 +54,7 @@ uint8_t C2P(uint8_t r, uint8_t c) {
 // Animation Header:
 //	uint8_t frame_ct
 //	uint8_t FPS
+//	uint8_t palette
 //	// Offset from start of animation data (BE 16 bit)
 //	uint16_t frame_offsets[]
 //	frames[]
@@ -113,7 +114,7 @@ void UnpackFrame(uint8_t px_ct, uint8_t *p) {
 // Load animation frame
 void LoadFrame(uint8_t frame_idx, uint8_t *animation_data) {
 	// FIXME: Put the data into PROGMEM
-	uint16_t offset = ((uint16_t)(animation_data[frame_idx * 2 + 2]) << 8) | animation_data[frame_idx * 2 + 3];
+	uint16_t offset = ((uint16_t)(animation_data[frame_idx * 2 + 3]) << 8) | animation_data[frame_idx * 2 + 4];
 	uint8_t size = animation_data[offset];
 	UnpackFrame(size, &(animation_data[offset + 1]));
 }

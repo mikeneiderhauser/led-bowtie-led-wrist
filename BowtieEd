@@ -230,10 +230,12 @@ class QMatrix(QWidget):
             b.close()
 
         frame_ct = data[0]
-        fps = data[1]
+        self.fps = data[1]
+        self.parent().parent().updateFPS(self.fps)
+        self.palette = data[2]
 
         # Ignore the offsets, we don't need them
-        pos = 2 + frame_ct * 2
+        pos =frame_ct * 2 + 3
         for i in range(0, frame_ct):
             # Read in the frame size
             sz = data[pos]
@@ -246,9 +248,10 @@ class QMatrix(QWidget):
                 pos = pos + 1
                 c = data[pos]
                 pos = pos + 1
-                color = QColor(255, 0, 0, 255)
                 
                 # Set the pixels
+                # FIXME: Brightness is always 0xF for now...
+                color = Palettes[self.palette][c & 0xF]
                 self.frames[i].setPixelIdx(pixel, color)
 
             # Add the next frame
@@ -270,12 +273,13 @@ class QMatrix(QWidget):
         header = []
         header.append(len(self.frames))
         header.append(int(self.fps))
+        header.append(int(self.palette))
 
         # Frame data
         fr = []
 
         # Frame offsets
-        base = len(self.frames) * 2 + 2
+        base = len(self.frames) * 2 + 3
         frame_offsets = []
 
         # Get the frame data
@@ -311,6 +315,8 @@ class QMatrix(QWidget):
             b.write(hex(header[0]))
             b.write(", ")
             b.write(hex(header[1]))
+            b.write(", ")
+            b.write(hex(header[2]))
             b.write(",\n")
 
             # Write out the offset data
