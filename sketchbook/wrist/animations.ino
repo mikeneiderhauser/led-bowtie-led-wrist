@@ -45,15 +45,16 @@ void outline_solid(uint8_t mask)
 {
   if (state_step == 0)
   {
+    ring_off();
     for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
       if (((1 << i) & mask) > 0)
       {
-        leds[state_step] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+        leds[i] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
       }
       else
       {
-        leds[state_step] = CRGB::Black;
+        leds[i] = CRGB::Black;
       }
     }
     state_step++;

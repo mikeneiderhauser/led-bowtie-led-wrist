@@ -44,7 +44,7 @@ uint8_t state = 0;                    // current state
 uint8_t state_step = 0;               // current animation step in state
 uint8_t palette_step = 0;             // current palette step in state
 unsigned long last_state_change = 0;
-unsigned long state_change_timeout = 300 * 1000; // state timout. goto default in seconds
+unsigned long state_change_timeout = 300000; // state timout. goto default in seconds
 // (300 sec -> 5 mins)
 
 // States
@@ -222,7 +222,7 @@ void setup() {
 
   // turn on the raido
   start_radio();
-  last_state_change = millis();
+  last_state_change = (unsigned long)millis();
   state = STATE_RING_CHASE4NCLK_RAINBOW;
 }
 
@@ -239,7 +239,7 @@ void loop() {
       // do a quick state change, dont allow animations to 'finish'
       state_step = 0;
       state = last_nrf_byte;
-      last_state_change = millis();
+      last_state_change = (unsigned long)millis();
     }
     // else dont do anything.. allow timeout to occur
   }
@@ -247,12 +247,12 @@ void loop() {
 #define TIMEOUT_ENABLED
 #ifdef TIMEOUT_ENABLED
   // Handle radio timeout (last state_change_timeout)
-  if (millis() >= (last_state_change + state_change_timeout))
+  if ((unsigned long)(millis() -last_state_change) >= state_change_timeout)
   {
     Serial.println("Hit timeout");
     state = DEFAULT_STATE;
     state_step = 0;
-    last_state_change = millis();
+    last_state_change = (unsigned long)millis();
     // More than likely an issue w/ the radio.  request reset
     request_radio_reset = 1;
   }
@@ -375,7 +375,7 @@ void loop() {
   {
     Serial.println("RESETTING RADIO!!!");
     request_radio_reset = 0;
-    //reset_radio();
+    reset_radio();
   }
 }
   
