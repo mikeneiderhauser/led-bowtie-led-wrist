@@ -59,7 +59,7 @@ class Palette():
         
         # Build the color table
         self.colorTable = []
-        for i in range(0, 255):
+        for i in range(0, 256):
             self.colorTable.append(self.color(i))
 
     # Get the color table index from a QColor
@@ -98,17 +98,17 @@ class Palette():
             f2 = lo4 << 4
             f1 = 255 - f2
 
-            rp = r
+            rp = entry.getRgb()[0]
             r = ((r * f1) >> 8) & 0xFF
             rp = ((rp * f2) >> 8) & 0xFF
             r = r + rp
 
-            gp = g
+            gp = entry.getRgb()[1]
             g = ((g * f1) >> 8) & 0xFF
             gp = ((gp * f2) >> 8) & 0xFF
             g = g + gp
 
-            bp = b
+            bp = entry.getRgb()[2]
             b = ((b * f1) >> 8) & 0xFF
             bp = ((bp * f2) >> 8) & 0xFF
             b = b + bp
@@ -598,42 +598,43 @@ class PalettePicker(QDialog):
 
         self.picker = QComboBox()
         self.picker.addItems(self.paletteObj.pnames)
-        layout.addWidget(self.picker, 0, 0)
+        layout.addWidget(self.picker, 0, 0, 1, 8)
 
         self.pickerDo = QPushButton("Load Palette")
         self.pickerDo.clicked.connect(self.doPalette)
-        layout.addWidget(self.pickerDo, 0, 1)
+        layout.addWidget(self.pickerDo, 0, 8, 1, 8)
 
         self.label = QLabel("Click a color to select it for painting")
-        layout.addWidget(self.label, 1, 0)
+        layout.addWidget(self.label, 1, 0, 1, 16)
 
         self.labels = []
         self.buttons = []
 
-        for i in range(0,16):
-            lbl = QLabel("Color " + str(i * 16))
-            if ((i * 16) == color):
-                lbl.setStyleSheet('border: 1px; background-color: #CCCCCC; color: black')
-            self.labels.append(lbl)
-            layout.addWidget(lbl, i + 2, 0)
-            b = QPushButton()
-            b.setObjectName(str(i))
-            self.buttons.append(b)
-            layout.addWidget(b, i + 2, 1)
-            pc = self.paletteObj.getColor(i*16).name()
-            b.setStyleSheet('border: 0px; background-color: ' + pc + '; color: ' + pc)
-            sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-            sp.setHorizontalStretch(True)
-            sp.setVerticalStretch(True)
-            sp.setHeightForWidth(True)
-            b.setSizePolicy(sp)
-            b.setMinimumWidth(75)
-            b.setMinimumHeight(25)
-            b.clicked.connect(self.doSelect)
+        ct = 0
+        for r in range(0,16):
+            for c in range(0, 16):
+                b = QPushButton()
+                b.setObjectName(str(ct))
+                self.buttons.append(b) 
+                pc = self.paletteObj.getColor(ct).name()
+                if (ct == color):
+                    b.setStyleSheet('border: 2px solid black; background-color: ' + pc + '; color: ' + pc)
+                else:
+                    b.setStyleSheet('border: 0px; background-color: ' + pc + '; color: ' + pc)
+                sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+                sp.setHorizontalStretch(True)
+                sp.setVerticalStretch(True)
+                sp.setHeightForWidth(True)
+                b.setSizePolicy(sp)
+                b.setMinimumWidth(5)
+                b.setMinimumHeight(15)
+                b.clicked.connect(self.doSelect)
+                layout.addWidget(b, r + 2, c)
+                ct = ct + 1
 
         self.done = QPushButton("Done")
         self.done.clicked.connect(self.doDone)
-        layout.addWidget(self.done, 19, 1)
+        layout.addWidget(self.done, 19, 13, 1, 3)
         self.setLayout(layout)
 
         self.color = color
@@ -642,9 +643,15 @@ class PalettePicker(QDialog):
     def doSelect(self):
         pb = self.sender()
         pbNum = int(pb.objectName())
-        self.labels[self.color].setStyleSheet("")
-        self.labels[pbNum].setStyleSheet('border: 1px; background-color: #CCCCCC; color: black')
-        self.color = pbNum * 16
+            
+        # Turn off the border color
+        pc = self.paletteObj.getColor(self.color).name()
+        self.buttons[self.color].setStyleSheet('border: 0px; background-color: ' + pc + '; color: ' + pc)
+
+        # Turn on the border color
+        self.color = pbNum
+        pc = self.paletteObj.getColor(self.color).name()
+        self.buttons[self.color].setStyleSheet('border: 2px solid black; background-color: ' + pc + '; color: ' + pc)
 
     def doPalette(self):
         p = self.picker.currentIndex()
