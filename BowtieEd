@@ -257,7 +257,7 @@ class QMatrix(QWidget):
         self.r = 9
         self.ct = 93
         self.frame = 0
-        self.fps = 30
+        self.fps = 5
         self.mode = "Operate"
         self.buttons = []
         self.paletteIdx = 0
@@ -339,7 +339,7 @@ class QMatrix(QWidget):
                     pass
 
                 # Otherwise, set the pixel
-                self.frames[i].setPixelIdx(pixel, c)
+                self.frames[i].setPixelIdx(pixel, color)
 
             # Add the next frame
             if (i != frame_ct - 1):
