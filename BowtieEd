@@ -877,22 +877,24 @@ class BowtieEd(QMainWindow):
     # Dialog for loading an animation
     ##########################################################
     def loadAnimation(self):
-        fn, fm = QFileDialog.getOpenFileName(self, 'Load animation ...', None, "Header File (*.h);;Binary File (*.bin);;All Files (*)")  
-        if (fn != None):
+        fn, fm = QFileDialog.getOpenFileName(self, 'Load animation ...', None, "Animation File (*.h *.bin);;All Files (*)")
+        if ((fn != None) and (fn != '')):
             self.matrix.loadAnimation(fn)
 
     ##########################################################
     # Dialog for saving an animation
     ##########################################################
     def saveAnimation(self):
-        fn, fm = QFileDialog.getSaveFileName(self, 'Save animation ...', None, "Header File (*.h);;Binary File (*.bin);;All Files (*)")
+        fn, fm = QFileDialog.getSaveFileName(self, 'Save animation ...', None, "Animation File (*.h *.bin);;All Files (*)")
+        # Cancel
+        if (fn == ''):
+            return
+
+        # Get the extension
         fx, ext = os.path.splitext(fn)        
         if (ext == ""):
-            if (fm == "Header File (*.h)"):
-                fn = fn + ".h"
-            else:
-                fn = fn + ".bin"
-        if (fn != None):
+            fn = fn + ".h"
+        if ((fn != None) and (fn != '')):
             self.matrix.saveAnimation(fn)
 
     ##########################################################
@@ -900,8 +902,7 @@ class BowtieEd(QMainWindow):
     ##########################################################
     def ImportFrame(self):
         fn, fm = QFileDialog.getOpenFileName(self, 'Open frame...', None, "Images (*.bmp *.gif *.jpg *.jpeg *.png);;All Files (*)")  
-        if (fn != None):
-            print (fn)
+        if ((fn != None) and (fn != '')):
             img = QImage(fn)
             if (img != None):
                 self.matrix.blit(img)
@@ -911,7 +912,7 @@ class BowtieEd(QMainWindow):
     ##########################################################
     def ExportFrame(self):
         fn, fm = QFileDialog.getSaveFileName(self, 'Save as...', None, "Images (*.bmp *.jpg *.jpeg *.png);;All Files (*)")
-        if (fn != None):
+        if ((fn != None) and (fn != '')):
             self.matrix.saveFrame(fn)
     
     ##########################################################
@@ -919,7 +920,7 @@ class BowtieEd(QMainWindow):
     ##########################################################
     def pickScript(self):
         fn, fm = QFileDialog.getOpenFileName(self, 'Load Script...', 'Scripts', "Scripts (*.scr);;All Files (*)")
-        if (fn != None):
+        if ((fn != None) and (fn != '')):
            self.matrix.setScript(fn)
     
     #####################
