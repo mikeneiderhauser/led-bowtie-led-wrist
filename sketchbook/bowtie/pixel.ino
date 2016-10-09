@@ -112,8 +112,9 @@ void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo) {
 	// Unpack the frame
 	for (i=0; i<2*size; i += 2) {
 		pixel = pgm_read_byte_near(p + i);
+
 		// It's a command
-		if (pixel & 0xF0 == 0xF0) {
+		if ((pixel & 0xF0) == 0xF0) {
 			switch(pixel & 0xF) {
 			// FIXME: Implement commands
 			default:
@@ -134,11 +135,11 @@ void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo) {
 }
 
 // Load animation frame from progmem
-void LoadFrame(uint8_t frame_idx, uint8_t *animation_data, bool undo) {
-	uint8_t previous = frame_idx - 1;
+void LoadFrame(uint8_t frame_idx, uint8_t *animation_data) {
+  uint8_t previous = frame_idx - 1;
 	if (frame_idx == 0)
 		previous = pgm_read_byte_near(animation_data) - 1;
-		
-	UnpackFrame(previous, animation_data, false);
-	UnpackFrame(frame_idx, animation_data, true);
+
+	UnpackFrame(previous, animation_data, true);
+	UnpackFrame(frame_idx, animation_data, false);
 }
