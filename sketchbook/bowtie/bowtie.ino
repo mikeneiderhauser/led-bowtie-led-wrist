@@ -268,6 +268,7 @@ void loop() {
     last_state_change = millis();
     // Send State ID
     radio.stopListening();
+    radio.flush_tx();
     #ifdef ENABLE_PKT_ACK
     radio.startWrite( &state, sizeof(uint8_t), 0; //ACK
     #else

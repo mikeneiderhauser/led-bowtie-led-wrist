@@ -91,10 +91,10 @@ void UnpackFrame(uint8_t px_ct, uint8_t *p) {
 		if (p[i] & 0xF0 == 0xF0) {
 			switch(p[i] & 0xF) {
 			case PP_CMD_BLACK:
-				leds[pixel] = CRGB::Black;
+				leds[i] = CRGB::Black;
 				break;
 			case PP_CMD_WHITE:
-				leds[pixel] = CRGB::White;
+				leds[i] = CRGB::White;
 				break;
 			default:
 				break;
