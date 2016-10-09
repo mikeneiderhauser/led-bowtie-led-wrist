@@ -407,9 +407,9 @@ class QMatrix(QWidget):
 
             # Write out the offset data
             for f in frame_offsets:
-                b.write(hex((f & 0xFF) >> 8))
-                b.write(", ")
                 b.write(hex(f & 0xFF))
+                b.write(", ")
+                b.write(hex((f & 0xFF) >> 8))
                 b.write(", ")
             b.write("\n");
 
@@ -436,7 +436,7 @@ class QMatrix(QWidget):
             
             # Write out the offset data
             for f in frame_offsets:
-                od = ((f >> 8) & 0xFF, f & 0xFF)
+                od = (f & 0xFF, (f >> 8) & 0xFF)
                 b.write(bytes(od))
 
             # Write out the frame data
