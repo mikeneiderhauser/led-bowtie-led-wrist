@@ -594,10 +594,37 @@ class QMatrix(QWidget):
         # Update the loaded buttons
         self.updateMatrix()
 
-    ### Matrix Export active pixel list
-    def exportActive(self):
-        print ("FIXME")
-        pass
+    ### Matrix Export active pixel list from the current frame
+    def exportActive(self, fn):
+        # Iterate through the pixels
+        active = []
+        for i in range(0, self.ct):
+            px = self.frames[self.frame].getPixelIdx(i)
+            # We only care about the active pixels
+            if (not (px == QColor(0, 0, 0, 255))):
+                active.append(i)
+
+        # If there are not any pixels to write out, pop a message
+        if (len(active) == 0):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setTitle("Error")
+            msg.setText("There are no active pixels!")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+
+        # Write out the data
+        b = open(fn, 'w')
+        if (b == None):
+            print ("Unable to open the file " + fn + " for writing!")
+            return
+            
+        b.write("{\n\t")
+        for i in active:
+            b.write(str(i))
+            if (not(i == active[-1])):
+                b.write(", ")
+        b.write("\n};\n")
 
 class PalettePicker(QDialog):
     def __init__(self, parent=None, paletteIdx=0, color=0):
@@ -870,8 +897,11 @@ class BowtieEd(QMainWindow):
     ##########################################################
     def exportArray(self):
         fn, fm = QFileDialog.getSaveFileName(self, 'Save list of active (not black/off) pixels ...', None, "C Header (*.h);;All Files (*)")
-        if (fn != None):
-            self.matrix.exportActive()
+        if ((fn != None) and (fn != '')):
+            fx, ext = os.path.splitext(fn)        
+            if (ext == ""):
+                fn = fn + ".h"
+            self.matrix.exportActive(fn)
     
     ##########################################################
     # Dialog for loading an animation
