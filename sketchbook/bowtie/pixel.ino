@@ -4,6 +4,31 @@
 #define NUM_ROW 	9
 #define PIXEL_CT	93
 
+// *************************************
+// Useful pixel groups for animations
+// *************************************
+
+// All of the interior pixels with 1 pixel on all sides
+#define PX_ONE_NEIGHBOR_SIZE	37	
+const uint8_t PX_One_Neighbor[PX_ONE_NEIGHBOR_SIZE] PROGMEM = {
+	10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24, 29, 30, 31, 36, 40, 43, 46, 49, 52, 56, 61, 62, 63, 68, 69, 70, 71, 72, 76, 77, 78, 79, 80, 81, 82
+};
+
+// Just the exterior pixels
+#define PX_EDGE_SIZE	44
+const uint8_t PX_Edge[PX_EDGE_SIZE] PROGMEM = {
+  	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 26, 27, 38, 39, 44, 45, 50, 51, 58, 59, 74, 75, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 66, 65, 54, 53, 48, 47, 42, 41, 34, 33, 18, 17
+};
+
+// Get a pixel from a pixel group
+uint8_t PG(uint8_t *pg, uint8_t pixel) {
+	return pgm_read_byte_near(pg + pixel);
+}
+
+// *************************************
+// Lookup tables for pixel placement
+// *************************************
+
 // Table for decoding from row and column to pixel
 const uint8_t row_col_tbl[NUM_ROW][NUM_COL] PROGMEM = {
 	{ 0, 17, 18, 255, 255, 255, 255, 255, 255, 255, 255, 255, 66, 83, 84 },
@@ -35,7 +60,7 @@ const uint8_t pixel_tbl[PIXEL_CT] PROGMEM = {
 
 // Get a row and column from a pixel #
 void P2C(uint8_t p, uint8_t *r, uint8_t *c) {
-	int idx = pgm_read_byte_near(&(pixel_tbl[p]));
+	int idx = pgm_read_byte_near(pixel_tbl + p);
 	if (idx == 0xFFFF){
 		*c = 255;
 		*r = 255;
@@ -55,65 +80,65 @@ uint8_t C2P(uint8_t r, uint8_t c) {
 //	uint8_t frame_ct
 //	uint8_t FPS
 //	uint8_t palette
-//	// Offset from start of animation data (BE 16 bit)
-//	uint16_t frame_offsets[]
-//	frames[]
+//	// Offset from start of animation data (LE 16 bit)
+//	uint16_t frame_offsets[frame_ct]
+//	frames[frame_ct]
 
-// Frames[x]: 
-//	uint8_t size
-//	pp_t[]
+// Frame format: 
+//	uint8_t pixel_ct
+//	pp_t pixels[pixel_ct]
 
 // Packed Pixel from Matrix Editor
 // If the pixel # is 0xFX, then it's a command instead
 // typedef struct {
-//  uint8_t pixel;
-//  uint8_t color;
+//	// Pixel index
+//  	uint8_t pixel;
+//	// Palette Color Index
+//  	uint8_t color;
 // } pp_t;
 
-// Pixel off
-#define PP_CMD_BLACK		0
-// Pixel full on
-#define PP_CMD_WHITE		1
-
 // Set the color of the companion wrist corsage
-#define PP_CMD_SET_WRIST_COLOR	2
+#define PP_CMD_SET_WRIST_COLOR	0
 
 // Unpack array of pixels with palette into display array
-void UnpackFrame(uint8_t px_ct, uint8_t *p) {
-	uint8_t i, px, ct;
-	// For now, black out the frame first
-	for (ct=0; ct<PIXEL_CT; ct++)
-		leds[ct] = CRGB::Black;
+// If undo is set, turn off the pixel instead of turning it on
+void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo) {
+	uint8_t i, px, ct, pixel, color;
+
+	uint16_t offset = pgm_read_word_near(animation_data + ((frame << 1) + 3));
+	uint8_t size = pgm_read_byte_near(animation_data + offset);
+	uint8_t *p = animation_data + offset + 1;
 
 	// Unpack the frame
-	for (i=0; i<2*px_ct; i += 2) {
+	for (i=0; i<2*size; i += 2) {
+		pixel = pgm_read_byte_near(p + i);
 		// It's a command
-		if (p[i] & 0xF0 == 0xF0) {
-			switch(p[i] & 0xF) {
-			case PP_CMD_BLACK:
-				leds[i] = CRGB::Black;
-				break;
-			case PP_CMD_WHITE:
-				leds[i] = CRGB::White;
-				break;
+		if (pixel & 0xF0 == 0xF0) {
+			switch(pixel & 0xF) {
+			// FIXME: Implement commands
 			default:
 				break;
 			}
 		// Otherwise, it's pixel data
 		} else {
-			// Color the pixel
-			uint8_t pixel = p[i];
-			uint8_t color = p[i+1];
-			// FIXME: Colors are always 255 brightness...
-			leds[pixel] = ColorFromPalette(currentPalette, color, 255, currentBlending);
+			// If undo is enabled, we turn off the LED
+			if (undo) {
+				leds[pixel] = CRGB::Black;
+			// Colors are always maximum brightness...
+			} else {
+				color = pgm_read_byte_near(p + i + 1);
+				leds[pixel] = ColorFromPalette(currentPalette, color, 0xFF, currentBlending);
+			}
 		}
 	}
 }
 
-// Load animation frame
-void LoadFrame(uint8_t frame_idx, uint8_t *animation_data) {
-	// FIXME: Put the data into PROGMEM
-	uint16_t offset = ((uint16_t)(animation_data[frame_idx * 2 + 3]) << 8) | animation_data[frame_idx * 2 + 4];
-	uint8_t size = animation_data[offset];
-	UnpackFrame(size, &(animation_data[offset + 1]));
+// Load animation frame from progmem
+void LoadFrame(uint8_t frame_idx, uint8_t *animation_data, bool undo) {
+	uint8_t previous = frame_idx - 1;
+	if (frame_idx == 0)
+		previous = pgm_read_byte_near(animation_data) - 1;
+		
+	UnpackFrame(previous, animation_data, false);
+	UnpackFrame(frame_idx, animation_data, true);
 }
