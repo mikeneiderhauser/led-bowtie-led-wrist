@@ -132,12 +132,18 @@ class Frame(QImage):
     # Set pixels from index and color index
     def setPixelIdx(self, idx, color_idx):
         r, c = self.P2C(idx)
-        color = self.palette.getColor(color_idx)
+        color = QColor(0, 0, 0, 255)
+        if ((color_idx >= 0) and (color_idx < 256)):
+            color = self.palette.getColor(color_idx)
+
         super(Frame, self).setPixel(c, r, color.rgb())
 
     # Set pixels using the row, column and color index
     def setPixel(self, c, r, color_idx):
-        color = self.palette.getColor(color_idx)
+        color = QColor(0, 0, 0, 255)
+        if ((color_idx >= 0) and (color_idx < 256)):
+            color = self.palette.getColor(color_idx)
+
         super(Frame, self).setPixel(c, r, color.rgb())
 
     # Get color from an indexed pixel
@@ -147,6 +153,17 @@ class Frame(QImage):
 
         r, c = self.P2C(idx)
         return QColor(super(Frame, self).pixel(c, r))
+
+    # Get paletted color from an indexed pixel
+    def getPalPixelIdx(self, idx):
+        if (idx >= 93):
+            return -1
+
+        r, c = self.P2C(idx)
+        color = QColor(super(Frame, self).pixel(c, r))
+
+        return self.palette.getColorIdx(color)
+
 
     # Get a row and column from a pixel #
     def P2C(self, p):
@@ -245,7 +262,6 @@ class QMatrix(QWidget):
         self.buttons = []
         self.paletteIdx = 0
         self.color = 0
-        self.eraser = False
 
         # Create the new Frame
         self.frames = []
@@ -482,18 +498,15 @@ class QMatrix(QWidget):
     def push(self):
         pb = self.sender()
         pbNum = int(pb.objectName())
-        ### Set color
-        if (self.eraser == True):
-            color = QColor(0, 0, 0, 255)
-            pb.setStyleSheet('border: 0px; background-color: ' + color.name() + '; color: ' + color.name())
-        else:
+        ### Set the color
+        if (self.frames[self.frame].getPalPixelIdx(pbNum) != self.color):
             self.frames[self.frame].setPixelIdx(pbNum, self.color)
             color = self.frames[self.frame].palette.getColor(self.color)
-            pb.setStyleSheet('border: 0px; background-color: ' + color.name() + '; color: ' + color.name())
-
-    ### Toggle the eraser
-    def eraserToggle(self):
-        self.eraser = not self.eraser
+        else:
+            color = QColor(0,0,0,255)
+            self.frames[self.frame].setPixelIdx(pbNum, -1)
+        
+        pb.setStyleSheet('border: 0px; background-color: ' + color.name() + '; color: ' + color.name())
 
     ### Move to the next frame
     def frameUp(self):
@@ -749,16 +762,12 @@ class BowtieEd(QMainWindow):
         #self.fileMenu.addAction(self.loadScriptAction)
         self.fileMenu.addAction(self.exitAction)
         
-        # Edit Menu
-        self.eraseAction = QAction('Eraser', self)
-        self.eraseAction.setCheckable(True)
-        self.eraseAction.triggered.connect(self.matrix.eraserToggle)
+        # Color Menu
         self.colorAction = QAction('Select Color', self)
         self.colorAction.triggered.connect(self.PickColorPalette)
 
-        self.editMenu = self.menubar.addMenu('Edit')
-        self.editMenu.addAction(self.eraseAction)
-        self.editMenu.addAction(self.colorAction)
+        self.colorMenu = self.menubar.addMenu('Color')
+        self.colorMenu.addAction(self.colorAction)
 
         # Content Menu
         self.importAction = QAction('Import Image as Current Frame', self)
