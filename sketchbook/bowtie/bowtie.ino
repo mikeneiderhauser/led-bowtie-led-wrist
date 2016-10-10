@@ -114,7 +114,7 @@ TBlendType    backupBlending;
 #define STATE_NIGHTRIDER 7
 #define NUM_STATES 8
 
-uint8_t state = STATE_OUTLINE;
+uint8_t state = STATE_OFF;
 uint8_t wrist_state = 0;
 uint8_t state_step = 0;
 uint8_t state_init = 1;
@@ -123,6 +123,8 @@ uint8_t state_change_allowed = 0;
 uint8_t state_next_state = 0xff;
 uint8_t palette_step = 0;
 uint8_t radio_write = 0;
+uint8_t tx_fail_ct = 0;
+#define MAX_TX_FAIL 10
 
 unsigned long last_state_change = 0;
 unsigned long state_change_timeout = 10 * 1000; // in seconds
@@ -252,6 +254,10 @@ void setup() {
   // turn on the raido
   start_radio();
   last_state_change = millis();
+  // Enable first state transition
+  // Sends nrf message
+  state_change_requested = 1;
+  state_change_allowed = 1;
 }
 
 
@@ -301,6 +307,11 @@ void loop() {
     // Send State ID
     radio.stopListening();
     radio.flush_tx();
+    if(tx_fail_ct >= MAX_TX_FAIL)
+    {
+        tx_fail_ct = 0;
+        reset_radio();
+    }
     #ifdef ENABLE_PKT_ACK
     radio.startWrite( &wrist_state, sizeof(uint8_t), 0; //ACK
     #else
@@ -431,6 +442,7 @@ void radio_irq(void)                                // Receiver role: Does nothi
   }
 
   if ( fail ) {                                       // Have we failed to transmit?
+    tx_fail_ct++;
     radio.startListening();
     Serial.println(F("Send:Failed"));
   }
