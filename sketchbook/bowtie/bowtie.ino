@@ -115,6 +115,7 @@ TBlendType    backupBlending;
 #define NUM_STATES 8
 
 uint8_t state = STATE_OUTLINE;
+uint8_t wrist_state = 0;
 uint8_t state_step = 0;
 uint8_t state_init = 1;
 uint8_t state_change_requested = 0;
@@ -153,6 +154,48 @@ void load_palette(uint8_t palette_id)
     currentPalette = myRedPalette_p;
     currentBlending = NOBLEND;
   }
+}
+
+// function to turn on (physically) and init the radio
+void start_radio() {
+  // power on NRF
+  digitalWrite(P_NRF_SW, LOW);
+  delay(500);
+
+  // Setup and configure rf radio
+  radio.begin();
+  delay(100);
+  //radio.setPALevel(RF24_PA_LOW);
+  #ifdef ENABLE_PKT_ACK
+      radio.enableAckPayload();                         // We will be using the Ack Payload feature, so please enable it
+  #endif
+  radio.enableDynamicPayloads();                    // Ack payloads are dynamic payloads
+  // Open pipes to other node for communication
+  radio.openWritingPipe(address[0]);             // communicate back and forth.  One listens on it, the other talks to it.
+  radio.openReadingPipe(1, address[1]);
+  radio.startListening();
+  #ifdef DEBUG
+    radio.printDetails();                             // Dump the configuration of the rf unit for debugging
+  #endif
+  
+  delay(50);
+  attachInterrupt(0, radio_irq, LOW);             // Attach interrupt handler to interrupt #0 (using pin 2) on BOTH the sender and receiver
+}
+
+// function to turn off (physically) the radio
+void stop_radio() {
+  detachInterrupt(0);
+  radio.stopListening();
+  delay(10);
+  digitalWrite(P_NRF_SW, HIGH);
+  delay(100);
+}
+
+// function to power cycle the radio
+void reset_radio()
+{
+  stop_radio();
+  start_radio();
 }
 
 void setup() {
@@ -205,27 +248,9 @@ void setup() {
   #ifdef DEBUG 
     printf_begin();
   #endif
-  // power on NRF
-  digitalWrite(P_NRF_SW, LOW);
-  delay(500);
-  
-  // Setup and configure rf radio
-  radio.begin();
-  delay(100);
-  //radio.setPALevel(RF24_PA_LOW);
-  #ifdef ENABLE_PKT_ACK
-      radio.enableAckPayload();                         // We will be using the Ack Payload feature, so please enable it
-  #endif
-  radio.enableDynamicPayloads();                    // Ack payloads are dynamic payloads
-  // Open pipes to other node for communication
-  radio.openWritingPipe(address[0]);             // communicate back and forth.  One listens on it, the other talks to it.
-  radio.openReadingPipe(1, address[1]);
-  #ifdef DEBUG
-    radio.printDetails();                             // Dump the configuration of the rf unit for debugging
-  #endif
-  
-  delay(50);
-  attachInterrupt(0, radio_irq, LOW);             // Attach interrupt handler to interrupt #0 (using pin 2) on BOTH the sender and receiver
+
+  // turn on the raido
+  start_radio();
   last_state_change = millis();
 }
 
@@ -252,6 +277,12 @@ void loop() {
       {
         state = 1;  // 0 is the off state. we dont want to automatically transition to off
       }
+
+      wrist_state++;
+      if (wrist_state >= NUM_RING_STATES)
+      {
+        wrist_state = 1;
+      }
     }
     else
     {
@@ -271,9 +302,9 @@ void loop() {
     radio.stopListening();
     radio.flush_tx();
     #ifdef ENABLE_PKT_ACK
-    radio.startWrite( &state, sizeof(uint8_t), 0; //ACK
+    radio.startWrite( &wrist_state, sizeof(uint8_t), 0; //ACK
     #else
-    radio.startWrite( &state, sizeof(uint8_t), 0); //NAK
+    radio.startWrite( &wrist_state, sizeof(uint8_t), 0); //NAK
     #endif
   }
 
