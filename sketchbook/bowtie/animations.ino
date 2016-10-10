@@ -1,3 +1,5 @@
+#include "wrist_states.h"
+
 void tie_off() {
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
     leds[i] = CRGB::Black;

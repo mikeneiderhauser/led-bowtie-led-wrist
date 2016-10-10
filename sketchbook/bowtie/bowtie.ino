@@ -10,6 +10,7 @@
 #include "RF24.h"
 #include "FastLED.h"
 #include <Bounce2.h>
+#include "wrist_states.h"
 
 #ifdef DEBUG
 #include "printf.h"

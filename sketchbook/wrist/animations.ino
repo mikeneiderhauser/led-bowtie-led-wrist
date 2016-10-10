@@ -62,7 +62,7 @@ void outline_solid(uint8_t mask)
   }
 }
 
-void chase(uint8_t ct, uint8_t * idxs)
+void chase(uint8_t ct, const uint8_t * idxs)
 {
   // ct -> Number of px to have on for chase (mirrored). Only 1,2,4 works. Anyting else 1 px will be lit
   // *idxs -> ptr to chase_idxs array

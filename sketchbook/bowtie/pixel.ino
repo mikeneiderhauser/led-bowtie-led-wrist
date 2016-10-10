@@ -1,5 +1,5 @@
 #include <avr/pgmspace.h>
-
+#include "wrist_states.h"
 #define NUM_COL  	15
 #define NUM_ROW 	9
 #define PIXEL_CT	93
