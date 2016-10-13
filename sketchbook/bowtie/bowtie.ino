@@ -1,6 +1,8 @@
 //#define PROTO_BOARD 1
-#define DEBUG
 //#define FLASH_ENABLE
+
+#define DEBUG
+#define EN_SER_PR
 
 #include <SPI.h>
 #ifdef FLASH_ENABLE
@@ -246,9 +248,11 @@ void setup() {
   backup_palette();
   
   // BEGIN
+  #ifdef EN_SER_PR
   Serial.begin(115200);
   #ifdef DEBUG 
     printf_begin();
+  #endif
   #endif
 
   // turn on the raido
@@ -275,7 +279,9 @@ void loop() {
   // State Change logic
   if (state_change_requested == 1 && state_change_allowed==1)
   {
+    #ifdef EN_SER_PR
     Serial.print("State Change from "); Serial.print(state);
+    #endif
     if (state_next_state == 0xff)
     {
       state++;
@@ -296,7 +302,9 @@ void loop() {
       state = state_next_state;
       state_next_state = 0xff;
     }
+    #ifdef EN_SER_PR
     Serial.print(" to "); Serial.println(state);
+    #endif
     state_change_requested = 0;
     state_change_allowed = 0;
     state_step = 0;
@@ -381,22 +389,38 @@ void read_buttons() {
   top_sw.update();
 
   if ( bot_sw.fell() ) {
+    #ifdef EN_SER_PR
     Serial.println("BOT FALL");
-    currentBlending = LINEARBLEND;
-    currentPalette = RainbowColors_p;
+    #endif
+    state_change_allowed = 1;
+    state_change_requested = 1;
+    state_next_state = STATE_OFF;
+    //forces next state to off
   }
 
   if ( mid_sw.fell() ) {
+    #ifdef EN_SER_PR
     Serial.println("MID FALL");
-    currentBlending = NOBLEND;
-    currentPalette = myPurplePalette_p;
+    #endif
+    // TODO add one of Joe's Animations here
+    state_change_allowed = 1;
+    state_change_requested = 1;
+    state_next_state = STATE_OUTLINE_ON;
+    //forces next state to purple outline
   }
 
   // Falling edge first then rising edge
   if ( top_sw.fell() ) {
     top_sw_fts = millis();
+    #ifdef EN_SER_PR
     Serial.println("TOP FALL");
+    #endif
+    state_change_allowed = 1;
+    state_change_requested = 1;
+    state_next_state = STATE_OUTLINE_ON;
+    //forces next state to purple outline
   }
+  /*
   else if ( top_sw.rose() ) {
     ts = millis() - top_sw_fts;
     Serial.println(ts);
@@ -425,8 +449,8 @@ void read_buttons() {
     {
       Serial.println("TOP PRESS");
     }
-    
   }
+  */
 }
 
 /********************** Interrupts *********************/
@@ -438,20 +462,26 @@ void radio_irq(void)                                // Receiver role: Does nothi
 
   if ( tx ) {                                         // Have we successfully transmitted?
     radio.startListening();
+    #ifdef EN_SER_PR
     Serial.println(F("Send:OK"));
+    #endif
   }
 
   if ( fail ) {                                       // Have we failed to transmit?
     tx_fail_ct++;
     radio.startListening();
+    #ifdef EN_SER_PR
     Serial.println(F("Send:Failed"));
+    #endif
   }
 
   if ( rx || radio.available()) {                     // Did we receive a message?
     #ifdef ENABLE_PKT_ACK
     radio.read(&message_count, sizeof(message_count));
+    #ifdef EN_SER_PR
     Serial.print(F("Ack: "));
     Serial.println(message_count);
+    #endif
     #endif
   }
 }
