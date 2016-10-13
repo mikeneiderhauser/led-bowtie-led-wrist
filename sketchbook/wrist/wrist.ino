@@ -223,7 +223,6 @@ void setup() {
   // turn on the raido
   start_radio();
   last_state_change = (unsigned long)millis();
-  state = STATE_RING_CHASE4NCLK_RAINBOW;
 }
 
 void loop() {
