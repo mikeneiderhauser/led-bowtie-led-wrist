@@ -14,6 +14,7 @@
 #include <Bounce2.h>
 #include "animations.h"
 #include "wrist_states.h"
+#include "pixel.h"
 
 #ifdef DEBUG
 #include "printf.h"
@@ -82,31 +83,6 @@ byte address[][5] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC , 0xCE, 0xCC, 0xCE, 0xCC, 0xC
 
 /********************** Setup *********************/
 
-#define PALETTE_RAINBOW 0
-#define PALETTE_PURPLE 1
-const TProgmemPalette16 myPurplePalette_p PROGMEM =
-{
-  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
-  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
-  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
-  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple
-};
-
-#define PALETTE_RED 2
-const TProgmemPalette16 myRedPalette_p PROGMEM =
-{
-  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
-  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
-  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
-  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red
-};
-
-CRGBPalette16 currentPalette;
-TBlendType    currentBlending;
-
-CRGBPalette16 backupPalette;
-TBlendType    backupBlending;
-
 uint8_t state = ANIM_TIE_OFF;
 uint8_t wrist_state = 0;
 uint8_t state_step = 0;
@@ -117,38 +93,11 @@ uint8_t palette_step = 0;
 uint8_t radio_write = 0;
 uint8_t tx_fail_ct = 0;
 #define MAX_TX_FAIL 10
+uint8_t bt_anim_mode = 1;
+uint8_t bt_anim_cfg = 0;
 
 unsigned long last_state_change = 0;
 unsigned long state_change_timeout = 10 * 1000; // in seconds
-
-void backup_palette() {
-  backupPalette = currentPalette;
-  backupBlending == currentBlending;
-}
-
-void restore_palette() {
-  currentPalette = backupPalette;
-  currentBlending = backupBlending;
-}
-
-void load_palette(uint8_t palette_id)
-{
-  if (palette_id == PALETTE_RAINBOW)
-  {
-    currentPalette = RainbowColors_p;
-    currentBlending = LINEARBLEND;
-  }
-  else if (palette_id == PALETTE_PURPLE)
-  {
-    currentPalette = myPurplePalette_p;
-    currentBlending = NOBLEND;
-  }
-  else if (palette_id == PALETTE_RED)
-  {
-    currentPalette = myRedPalette_p;
-    currentBlending = NOBLEND;
-  }
-}
 
 // function to turn on (physically) and init the radio
 void start_radio() {
@@ -234,8 +183,8 @@ void setup() {
   }
 
   // Load default palette to memory and init backup palette
-  load_palette(PALETTE_RAINBOW);
-  backup_palette();
+  LoadPalette(PALETTE_RAINBOW);
+  BackupPalette();
   
   // BEGIN
   #ifdef EN_SER_PR
@@ -293,7 +242,7 @@ void loop() {
     // state var cleanup
     state_change_requested = 0;  // clear state change request
     state_step = 0;  // reset state step
-    restore_palette();  // restore previous color palette - TBD May not be needed
+    RestorePalette();  // restore previous color palette - TBD May not be needed
     // save current time
     last_state_change = millis();
 

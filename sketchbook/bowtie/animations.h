@@ -3,7 +3,7 @@
 
 void initAnimation(uint8_t anim, uint8_t cfg);
 void animAnimation(uint8_t anim, uint8_t step);
-void switchAnimation(uint8_t anim, uint8_t step);
+bool switchAnimation(uint8_t anim, uint8_t step);
 
 #define ANIM_TIE_OFF		   0  // mode 0, cfg x
 #define ANIM_OUTLINE2		   1  // mode 1, cfg 2

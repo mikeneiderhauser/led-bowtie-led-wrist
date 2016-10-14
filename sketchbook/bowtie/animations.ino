@@ -321,7 +321,7 @@ Animation_Func_t Animation_Funcs[7] = {
 //	anim_Rainbow
 };
 
-typedef void (*Animation_Switch_t)(uint8_t);
+typedef bool (*Animation_Switch_t)(uint8_t);
 Animation_Switch_t Animation_Switches[7] = {
 	switch_TieOff,
 	switch_Outline,
@@ -338,11 +338,11 @@ Animation_Switch_t Animation_Switches[7] = {
 // ****************************************************************************
 void initAnimation(uint8_t anim, uint8_t cfg) {
 	blankLEDs();
-	Animation_Inits[anim](cfg);
+	(Animation_Inits[anim])(cfg);
 }
 
 void animAnimation(uint8_t anim, uint8_t step) {
-	Animation_Funcs[anim](step);
+	(Animation_Funcs[anim])(step);
 
 	// Update the LEDs
 	FastLED.show();	
@@ -352,6 +352,6 @@ void animAnimation(uint8_t anim, uint8_t step) {
 		delay(ms);
 }
 
-void switchAnimation(uint8_t anim, uint8_t step) {
-	Animation_Switches[anim](step);
+bool switchAnimation(uint8_t anim, uint8_t step) {
+	return (Animation_Switches[anim])(step);
 }
