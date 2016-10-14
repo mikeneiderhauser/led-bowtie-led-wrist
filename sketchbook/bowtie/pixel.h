@@ -8,6 +8,9 @@
 #define PX_ONE_NEIGHBOR_SIZE	37	
 #define PX_EDGE_SIZE	44
 
+#define PG_INTERIOR 0
+#define PG_EDGE     1
+
 uint8_t PG(uint8_t pg, uint8_t pixel);
 void P2C(uint8_t p, uint8_t *r, uint8_t *c);
 uint8_t C2P(uint8_t r, uint8_t c);

@@ -67,7 +67,7 @@ void anim_Outline(uint8_t step) {
 	// This is the always on mode
 	if (mode_cfg == 255) {
   		for(uint8_t i = 0; i<PX_EDGE_SIZE; i++) {
-			px = PG(1, i);
+			px = PG(PG_EDGE, i);
 			setPixel(px, palette_step);
 		}
 		return;
@@ -85,46 +85,46 @@ void anim_Outline(uint8_t step) {
 
 	// Turn off all of the possibly used LEDs, keep it simple
 	if (mode_cfg == 4) {
-		px = PG(1, last_step + 33);
+		px = PG(PG_EDGE, last_step + 33);
 		leds[px] = CRGB::Black;
 
-		px = PG(1, last_step - 11);
+		px = PG(PG_EDGE, last_step - 11);
 		leds[px] = CRGB::Black;
 
-		px = PG(1, last_step - 33);
+		px = PG(PG_EDGE, last_step - 33);
 		leds[px] = CRGB::Black;
 
-		px = PG(1, last_step + 11);
+		px = PG(PG_EDGE, last_step + 11);
 		leds[px] = CRGB::Black;
 	}
 
 	if ((mode_cfg == 2) || (mode_cfg == 4)) {
-		px = PG(1, last_step + 22);
+		px = PG(PG_EDGE, last_step + 22);
 		leds[px] = CRGB::Black;
 
-		px = PG(1, last_step - 22);
+		px = PG(PG_EDGE, last_step - 22);
 		leds[px] = CRGB::Black;
 	}
 
 	// Turn on current LEDs
-	px = PG(1, step);
+	px = PG(PG_EDGE, step);
 	setPixel(px, palette_step);
 
 	// Turn on the 4x LEDs
 	if (mode_cfg == 4) {
     if (step < 11) {
-			px = PG(1, step + 33);
+			px = PG(PG_EDGE, step + 33);
 			setPixel(px, palette_step);
 		} else {
-			px = PG(1, step - 11);
+			px = PG(PG_EDGE, step - 11);
 			setPixel(px, palette_step);
 		}
 
     if (step < 33) {
-			px = PG(1, step + 11);
+			px = PG(PG_EDGE, step + 11);
 			setPixel(px, palette_step);
 		} else {
-			px = PG(1, step - 33);
+			px = PG(PG_EDGE, step - 33);
 			setPixel(px, palette_step);
 		}
 	}
@@ -132,10 +132,10 @@ void anim_Outline(uint8_t step) {
 	// Turn on the 2x LEDs
 	if ((mode_cfg == 2) || (mode_cfg == 4)) {
     if (step < 22) {
-			px = PG(1, step + 22);
+			px = PG(PG_EDGE, step + 22);
 			setPixel(px, palette_step);
 		} else {
-			px = PG(1, step - 22);
+			px = PG(PG_EDGE, step - 22);
 			setPixel(px, palette_step);
 		}
 	}
