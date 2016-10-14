@@ -142,6 +142,17 @@ void reset_radio()
 }
 
 void setup() {
+  // Initialize the random number generator
+  CreateTrulyRandomSeed();
+
+  // Enable the serial device
+  #ifdef EN_SER_PR
+  Serial.begin(115200);
+  #ifdef DEBUG 
+    printf_begin();
+  #endif
+  #endif
+
   // setup buttons
   pinMode(P_SWB, INPUT_PULLUP);
   pinMode(P_SWM, INPUT_PULLUP);
@@ -186,14 +197,6 @@ void setup() {
   LoadPalette(PALETTE_RAINBOW);
   BackupPalette();
   
-  // BEGIN
-  #ifdef EN_SER_PR
-  Serial.begin(115200);
-  #ifdef DEBUG 
-    printf_begin();
-  #endif
-  #endif
-
   // turn on the raido
   start_radio();
   last_state_change = millis();
@@ -249,7 +252,7 @@ void loop() {
     state_init = 1;  // we changed states.. perform state init (execution later)
   }
 
-  state = ANIM_OUTLINE4;
+  state = ANIM_PINWHEEL;
   // State machine - select animation mode, cfg, wrist state, and palette
   // TODO load palette per state
   if (state == ANIM_TIE_OFF) {
@@ -310,12 +313,12 @@ void loop() {
     wrist_state = STATE_RING_CHASE4NCLK_RAINBOW;
   }
   else if (state == ANIM_MATRIX) {
-    // TODO ANIMATION
     bt_anim_mode = 5;
     bt_anim_cfg = 0;
     // TODO palette
     wrist_state = 0;  // define via color palette
   }
+#if 0
   else if (state == ANIM_BTANIMATION) {
     // TODO ANIMATION
     bt_anim_mode = 6;
@@ -323,6 +326,7 @@ void loop() {
     // TODO palette
     wrist_state = 0;  // define via color palette
   }
+#endif
   else if (state == ANIM_RAINBOW) {
     // TODO ANIMATION
     bt_anim_mode = 7;
@@ -330,6 +334,17 @@ void loop() {
     LoadPalette(PALETTE_RAINBOW);
     wrist_state = STATE_RING_CHASE4CLK_RAINBOW;
   }
+#if 0
+  else if (state == ANIM_MOUSTACHE) {
+    bt_anim_mode = ;
+    bt_anim_cfg = 0;
+  }
+  else if (state == ANIM_MOUSTACHE_ON) {
+    bt_anim_mode = ;
+    bt_anim_cfg = 255;
+
+  }
+#endif
 
   // perform animation init
   if(state_init != 0)

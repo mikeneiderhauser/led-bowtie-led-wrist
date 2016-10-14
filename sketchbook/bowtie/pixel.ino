@@ -72,18 +72,18 @@ void LoadPalette(uint8_t palette_id) {
 // *************************************
 
 // All of the interior pixels with 1 pixel on all sides
-const uint8_t PX_One_Neighbor[PX_ONE_NEIGHBOR_SIZE] PROGMEM = {
+const uint8_t PG_One_Neighbor[PG_ONE_NEIGHBOR_SIZE] PROGMEM = {
 	10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24, 29, 30, 31, 36, 40, 43, 46, 49, 52, 56, 61, 62, 63, 68, 69, 70, 71, 72, 76, 77, 78, 79, 80, 81, 82
 };
 
 // Just the exterior pixels
-const uint8_t PX_Edge[PX_EDGE_SIZE] PROGMEM = {
+const uint8_t PG_Edge[PG_EDGE_SIZE] PROGMEM = {
   	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 26, 27, 38, 39, 44, 45, 50, 51, 58, 59, 74, 75, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 66, 65, 54, 53, 48, 47, 42, 41, 34, 33, 18, 17
 };
 
 uint8_t *Pixel_Groups[2] = {
-  PX_One_Neighbor,
-  PX_Edge
+  PG_One_Neighbor,
+  PG_Edge
 };
 
 // Get a pixel from a pixel group
@@ -96,16 +96,16 @@ uint8_t PG(uint8_t pg, uint8_t pixel) {
 // *************************************
 
 // Table for decoding from row and column to pixel
-const uint8_t row_col_tbl[NUM_ROW][NUM_COL] PROGMEM = {
-	{ 0, 17, 18, 255, 255, 255, 255, 255, 255, 255, 255, 255, 66, 83, 84 },
-	{ 1, 16, 19, 33, 255, 255, 255, 255, 255, 255, 255, 65, 67, 82, 85 },
-	{ 2, 15, 20, 32, 34, 255, 255, 255, 255, 255, 54, 64, 68, 81, 86 },
-	{ 3, 14, 21, 31, 35, 41, 42, 47, 48, 53, 55, 63, 69, 80, 87 },
-	{ 4, 13, 22, 30, 36, 40, 43, 46, 49, 52, 56, 62, 70, 79, 88 },
-	{ 5, 12, 23, 29, 37, 39, 44, 45, 50, 51, 57, 61, 71, 78, 89 },
-	{ 6, 11, 24, 28, 38, 255, 255, 255, 255, 255, 58, 60, 72, 77, 90 },
-	{ 7, 10, 25, 27, 255, 255, 255, 255, 255, 255, 255, 59, 73, 76, 91 },
-	{ 8, 9, 26, 255, 255, 255, 255, 255, 255, 255, 255, 255, 74, 75, 92 },
+const uint8_t row_col_tbl[NUM_ROW * NUM_COL] PROGMEM = {
+	0, 17, 18, 255, 255, 255, 255, 255, 255, 255, 255, 255, 66, 83, 84,
+	1, 16, 19, 33, 255, 255, 255, 255, 255, 255, 255, 65, 67, 82, 85,
+	2, 15, 20, 32, 34, 255, 255, 255, 255, 255, 54, 64, 68, 81, 86,
+	3, 14, 21, 31, 35, 41, 42, 47, 48, 53, 55, 63, 69, 80, 87,
+	4, 13, 22, 30, 36, 40, 43, 46, 49, 52, 56, 62, 70, 79, 88,
+	5, 12, 23, 29, 37, 39, 44, 45, 50, 51, 57, 61, 71, 78, 89,
+	6, 11, 24, 28, 38, 255, 255, 255, 255, 255, 58, 60, 72, 77, 90,
+	7, 10, 25, 27, 255, 255, 255, 255, 255, 255, 255, 59, 73, 76, 91,
+	8, 9, 26, 255, 255, 255, 255, 255, 255, 255, 255, 255, 74, 75, 92,
 };
 
 // Table for decoding from pixel to column and row
@@ -126,25 +126,25 @@ const uint8_t pixel_tbl[PIXEL_CT] PROGMEM = {
 
 // Get a row and column from a pixel #
 void P2C(uint8_t p, uint8_t *r, uint8_t *c) {
-	int idx = pgm_read_byte_near(pixel_tbl + p);
-	if (idx == 0xFFFF){
+	if (p >= PIXEL_CT) {
 		*c = 255;
 		*r = 255;
 	} else {
-		*c = (idx >> 4) & 0xFF;
-		*r = idx & 0xFF;
+		uint8_t idx = pgm_read_byte_near(pixel_tbl + p);
+		*r = (idx >> 4) & 0xF;
+		*c = idx & 0xF;
 	}
 }
 
 // Get a pixel # from row and column
 uint8_t C2P(uint8_t r, uint8_t c) {
-	return pgm_read_byte_near(&(row_col_tbl[r][c]));
+	return pgm_read_byte_near(row_col_tbl + r * NUM_COL + c);
 }
 
 // Set a pixel from a pixel # and color index
-void setPixel(uint8_t p, uint8_t c) {
+void setPixel(uint8_t p, uint8_t c, uint8_t brightness) {
   if (p < PIXEL_CT)
-	  leds[p] = ColorFromPalette(currentPalette, c, 255, currentBlending);
+	  leds[p] = ColorFromPalette(currentPalette, c, brightness, currentBlending);
 }
 
 // Format for Animations:

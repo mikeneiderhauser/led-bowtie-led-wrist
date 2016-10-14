@@ -55,7 +55,7 @@ bool switch_TieOff(uint8_t step) {
 // **********************************************
 void init_Outline(uint8_t cfg) {
 	mode_cfg = cfg;
-	mode_steps = PX_EDGE_SIZE;
+	mode_steps = PG_EDGE_SIZE;
 	ms = FPS(50);
 	// Set the default palette	
 }
@@ -66,12 +66,12 @@ void anim_Outline(uint8_t step) {
 
 	// This is the always on mode
 	if (mode_cfg == 255) {
-  		for(uint8_t i = 0; i<PX_EDGE_SIZE; i++) {
+  		for(uint8_t i = 0; i<PG_EDGE_SIZE; i++) {
 			px = PG(PG_EDGE, i);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		}
-    palette_step++;
-    return;
+		palette_step++;
+		return;
 	} 
 
 	// Get the previous step
@@ -81,76 +81,45 @@ void anim_Outline(uint8_t step) {
 		last_step = step - 1;
 
 	// Turn off last LEDs
-	px = PG(1, last_step);
-	leds[px] = CRGB::Black;
-
-	// Turn off all of the possibly used LEDs, keep it simple
-  if (mode_cfg == 4) {
-    if (step < 11) {
-		  px = PG(PG_EDGE, last_step + 33);
-		  leds[px] = CRGB::Black;
-    } else {
-		  px = PG(PG_EDGE, last_step - 11);
-		  leds[px] = CRGB::Black;
-    }
-    
-    if (step < 33) {
-		  px = PG(PG_EDGE, last_step - 33);
-		  leds[px] = CRGB::Black;
-    } else {
-	  	px = PG(PG_EDGE, last_step + 11);
-		  leds[px] = CRGB::Black;
-	  }
-  }
-
-	if ((mode_cfg == 2) || (mode_cfg == 4)) {
-	  if (step < 22) {
-		  px = PG(PG_EDGE, last_step + 22);
-		  leds[px] = CRGB::Black;
-	  } else {
-		  px = PG(PG_EDGE, last_step - 22);
-		  leds[px] = CRGB::Black;
-	  }
-	}
+	blankLEDs();
 
 	// Turn on current LEDs
 	px = PG(PG_EDGE, step);
-	setPixel(px, palette_step);
+	setPixel(px, palette_step, 255);
 
 	// Turn on the 4x LEDs
 	if (mode_cfg == 4) {
-    if (step < 11) {
+		if (step < 11) {
 			px = PG(PG_EDGE, step + 33);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		} else {
 			px = PG(PG_EDGE, step - 11);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		}
 
-    if (step < 33) {
+		if (step < 33) {
 			px = PG(PG_EDGE, step + 11);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		} else {
 			px = PG(PG_EDGE, step - 33);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		}
 	}
 	
 	// Turn on the 2x LEDs
 	if ((mode_cfg == 2) || (mode_cfg == 4)) {
-    if (step < 22) {
+		if (step < 22) {
 			px = PG(PG_EDGE, step + 22);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		} else {
 			px = PG(PG_EDGE, step - 22);
-			setPixel(px, palette_step);
+			setPixel(px, palette_step, 255);
 		}
 	}
 
 	// Increment through the palette
-  palette_step++;
-
-  return;
+	palette_step++;
+	return;
 }
 
 bool switch_Outline(uint8_t step) {
@@ -174,14 +143,14 @@ void anim_Nightrider(uint8_t step) {
 	uint8_t idx = 0;
 	uint8_t last;
 
-  // Clear the matrix
-  blankLEDs();
-  
 	if (step < 15) {
+		// Clear the matrix
+		blankLEDs();
+  
 		// Right to left
-		setPixel(idxs[step], palette_step);
-		setPixel(idxs[step] - 1, palette_step);
-		setPixel(idxs[step] + 1, palette_step);
+		setPixel(idxs[step], palette_step, 255);
+		setPixel(idxs[step] - 1, palette_step, 255);
+		setPixel(idxs[step] + 1, palette_step, 255);
 	}
 
 	// We wait for 25 steps
@@ -196,11 +165,14 @@ void anim_Nightrider(uint8_t step) {
 
 	// Go back
 	if ((step >= 40) && (step < 55)) {
+		// Clear the matrix
+		blankLEDs();
+
 		// Left to Right
 		idx = 29 - (step - 25);
-		setPixel(idxs[idx], palette_step);
-		setPixel(idxs[idx] - 1, palette_step);
-		setPixel(idxs[idx] + 1, palette_step);
+		setPixel(idxs[idx], palette_step, 255);
+		setPixel(idxs[idx] - 1, palette_step, 255);
+		setPixel(idxs[idx] + 1, palette_step, 255);
 	}
 
 	// We wait for 25 steps
@@ -223,11 +195,49 @@ bool switch_Nightrider(uint8_t step) {
 // * "Pinwheel" Dots Animation
 // **********************************************
 void init_Pinwheel(int cfg) {
-
+	mode_cfg = cfg;
+	mode_steps = 32;
+	ms = FPS(4);
 }
 
+uint8_t pw_Center = 0;
+uint8_t pw_Color = 0;
+uint8_t pw_Edges[4];
+uint8_t pw_Quads[4];
 void anim_Pinwheel(uint8_t step) {
+	// Select a new pinwheel
+	if (step == 0) {
+		blankLEDs();
 
+		pw_Center = PG(PG_ONE_NEIGHBOR, random(0, PG_ONE_NEIGHBOR_SIZE));
+		pw_Color = random(0, 255);
+
+		uint8_t row, col;
+		P2C(pw_Center, &row, &col);
+
+		pw_Edges[0] = C2P(row - 1, col);
+		pw_Edges[1] = C2P(row + 1, col);
+		pw_Edges[2] = C2P(row, col - 1);
+		pw_Edges[3] = C2P(row, col + 1);
+
+		pw_Quads[0] = C2P(row - 1, col - 1);
+		pw_Quads[1] = C2P(row - 1, col + 1);
+		pw_Quads[2] = C2P(row + 1, col - 1);
+		pw_Quads[3] = C2P(row + 1, col + 1);
+	}
+
+	setPixel(pw_Center, pw_Color, step << 3);
+	if (step % 2) {
+		for (uint8_t i=0; i<4; i++) {
+			leds[pw_Quads[i]] = CRGB::Black;
+			setPixel(pw_Edges[i], pw_Color + 128, step << 3);	
+		}
+	} else {
+		for (uint8_t i=0; i<4; i++) {
+			setPixel(pw_Quads[i], pw_Color + 128, step << 3);	
+			leds[pw_Edges[i]] = CRGB::Black;
+		}
+	}
 }
 
 void switch_Pinwheel(uint8_t step) {
@@ -268,13 +278,34 @@ void switch_Matrix(uint8_t step) {
 	return true;
 }
 
-uint8_t BT_Animations[1][1] = {
-  { 0 },
-};
+// **********************************************
+// * "Rainbow" Animation
+// **********************************************
+void init_Rainbow(int cfg) {
+	mode_cfg = cfg;
+	mode_steps = 255;
+	ms = 0;
+}
+
+void anim_Rainbow(uint8_t step) {
+	for (uint8_t i=0; i<PIXEL_CT; i++) {
+		// Half brightness
+		setPixel(i, step + i, 128);
+	}
+}
+
+void switch_Rainbow(uint8_t step) {
+	return true;
+}
+
 
 // **********************************************
 // * Play an Animation from BowtieEd
 // **********************************************
+uint8_t BT_Animations[1][1] = {
+  { 0 },
+};
+
 void init_BTAnimation(uint8_t cfg) {
 	// The cfg indicates which animation to play
 	mode_cfg = cfg;
@@ -301,7 +332,7 @@ bool switch_BTAnimation(uint8_t step) {
 // Animation modes
 // ****************************************************************************
 typedef void (*Animation_Init_t)(uint8_t);
-Animation_Init_t Animation_Inits[7] = {
+Animation_Init_t Animation_Inits[8] = {
 	init_TieOff,
 	init_Outline,
 	init_Nightrider,
@@ -309,11 +340,11 @@ Animation_Init_t Animation_Inits[7] = {
 	init_Pinwheel,
 	init_Matrix,
 	init_BTAnimation,
-//	init_Rainbow
+	init_Rainbow
 };
 
 typedef void (*Animation_Func_t)(uint8_t);
-Animation_Func_t Animation_Funcs[7] = {
+Animation_Func_t Animation_Funcs[8] = {
 	anim_TieOff,
 	anim_Outline,
 	anim_Nightrider,
@@ -321,11 +352,11 @@ Animation_Func_t Animation_Funcs[7] = {
 	anim_Pinwheel,
 	anim_Matrix,
 	anim_BTAnimation,
-//	anim_Rainbow
+	anim_Rainbow
 };
 
 typedef bool (*Animation_Switch_t)(uint8_t);
-Animation_Switch_t Animation_Switches[7] = {
+Animation_Switch_t Animation_Switches[8] = {
 	switch_TieOff,
 	switch_Outline,
 	switch_Nightrider,
@@ -333,7 +364,7 @@ Animation_Switch_t Animation_Switches[7] = {
 	switch_Pinwheel,
 	switch_Matrix,
 	switch_BTAnimation,
-//	switch_Rainbow
+	switch_Rainbow
 };
 
 // ****************************************************************************
@@ -354,7 +385,7 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 	if (ms != 0)
 		delay(ms);
 
-  return (step == (mode_steps - 1));
+	return (step == (mode_steps - 1));
 }
 
 bool switchAnimation(uint8_t anim, uint8_t step) {
