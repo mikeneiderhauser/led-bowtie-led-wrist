@@ -336,9 +336,14 @@ void loop() {
   }
 
   // run animation
-  animAnimation(bt_anim_mode, state_step);
-  // increment animation step
-  state_step++;
+  if(animAnimation(bt_anim_mode, state_step) == true) {
+    state_step = 0;
+  }
+  else
+  {
+    // increment animation step
+    state_step++;
+  }
 }
 
 void read_buttons() {

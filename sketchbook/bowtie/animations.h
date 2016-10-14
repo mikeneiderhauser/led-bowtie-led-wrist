@@ -2,7 +2,7 @@
 #define __ANIMATIONS_T__
 
 void initAnimation(uint8_t anim, uint8_t cfg);
-void animAnimation(uint8_t anim, uint8_t step);
+bool animAnimation(uint8_t anim, uint8_t step);
 bool switchAnimation(uint8_t anim, uint8_t step);
 
 #define ANIM_TIE_OFF		   0  // mode 0, cfg x
