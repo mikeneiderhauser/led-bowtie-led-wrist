@@ -291,21 +291,19 @@ void loop() {
     wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_PINWHEEL) {
-    // TODO ANIMATION
     bt_anim_mode = 4;
     bt_anim_cfg = 0;
-    // TODO palette
+    LoadPalette(PALETTE_RAINBOW);
     wrist_state = 0;  // define via color palette
+    wrist_state = STATE_RING_ALL_RAINBOW;
   }
   else if (state == ANIM_NIGHTRIDER) {
-    // TODO ANIMATION FIX
     bt_anim_mode = 2;
     bt_anim_cfg = 0;
     LoadPalette(PALETTE_RED);
     wrist_state = STATE_RING_CHASE4NCLK_RED;
   }
   else if (state == ANIM_NIGHTRIDER_RB) {
-    // TODO ANIMATION FIX
     bt_anim_mode = 2;
     bt_anim_cfg = 0;
     LoadPalette(PALETTE_RAINBOW);
@@ -314,11 +312,10 @@ void loop() {
   else if (state == ANIM_MATRIX) {
     bt_anim_mode = 5;
     bt_anim_cfg = 0;
-    // TODO palette
-    wrist_state = 0;  // define via color palette
+    LoadPalette(PALETTE_RAINBOW);
+    wrist_state = STATE_RING_ALL_RAINBOW;
   }
   else if (state == ANIM_RAINBOW) {
-    // TODO ANIMATION
     bt_anim_mode = 7;
     bt_anim_cfg = 0;
     LoadPalette(PALETTE_RAINBOW);
