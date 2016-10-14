@@ -83,7 +83,7 @@ byte address[][5] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC , 0xCE, 0xCC, 0xCE, 0xCC, 0xC
 
 /********************** Setup *********************/
 
-uint8_t state = ANIM_NIGHTRIDER;  //ANIM_NIGHTRIDER;
+uint8_t state = 4;  //ANIM_NIGHTRIDER;
 uint8_t wrist_state = 0;
 uint8_t state_step = 0;
 uint8_t state_init = 0;
@@ -284,17 +284,16 @@ void loop() {
     wrist_state = STATE_RING_ALL_RAINBOW;
   }
   else if (state == ANIM_WHISKERS) {
-    // TODO ANIMATION
-    bt_anim_mode = 3;
-    bt_anim_cfg = 0;
-    // TODO palette
-    wrist_state = 0;  // define via color palette
+    bt_anim_mode = 6;
+    bt_anim_cfg = 2;
+    LoadPalette(PALETTE_RAINBOW);
+    wrist_state = STATE_RING_CHASE4NCLK_RAINBOW;
+    palette_step++;
   }
   else if (state == ANIM_PINWHEEL) {
     bt_anim_mode = 4;
     bt_anim_cfg = 0;
     LoadPalette(PALETTE_RAINBOW);
-    wrist_state = 0;  // define via color palette
     wrist_state = STATE_RING_ALL_RAINBOW;
   }
   else if (state == ANIM_NIGHTRIDER) {
