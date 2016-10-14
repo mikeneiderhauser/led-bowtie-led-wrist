@@ -83,7 +83,7 @@ byte address[][5] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC , 0xCE, 0xCC, 0xCE, 0xCC, 0xC
 
 /********************** Setup *********************/
 
-uint8_t state = 4;  //ANIM_NIGHTRIDER;
+uint8_t state = ANIM_TIE_OFF;
 uint8_t wrist_state = 0;
 uint8_t state_step = 0;
 uint8_t state_init = 0;

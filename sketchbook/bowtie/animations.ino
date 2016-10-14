@@ -451,6 +451,8 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 	FastLED.show();
 	
 	// Delay for the FPS
+  if (mode_cfg == 255)
+    ms = 0;
 	if (ms != 0)
 		delay(ms);
 
