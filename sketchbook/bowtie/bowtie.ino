@@ -12,6 +12,7 @@
 #include "RF24.h"
 #include "FastLED.h"
 #include <Bounce2.h>
+#include "animations.h"
 #include "wrist_states.h"
 
 #ifdef DEBUG
@@ -106,22 +107,11 @@ TBlendType    currentBlending;
 CRGBPalette16 backupPalette;
 TBlendType    backupBlending;
 
-#define STATE_OFF 0
-#define STATE_OUTLINE 1
-#define STATE_OUTLINE_DUAL 2
-#define STATE_OUTLINE_QUAD 3
-#define STATE_OUTLINE_ON 4
-#define STATE_OUTLINE_ON_RAINBOW 5
-#define STATE_NIGHTRIDER_RED 6
-#define STATE_NIGHTRIDER 7
-#define NUM_STATES 8
-
-uint8_t state = STATE_OFF;
+uint8_t state = ANIM_TIE_OFF;
 uint8_t wrist_state = 0;
 uint8_t state_step = 0;
-uint8_t state_init = 1;
+uint8_t state_init = 0;
 uint8_t state_change_requested = 0;
-uint8_t state_change_allowed = 0;
 uint8_t state_next_state = 0xff;
 uint8_t palette_step = 0;
 uint8_t radio_write = 0;
@@ -259,9 +249,7 @@ void setup() {
   start_radio();
   last_state_change = millis();
   // Enable first state transition
-  // Sends nrf message
   state_change_requested = 1;
-  state_change_allowed = 1;
 }
 
 
@@ -277,25 +265,21 @@ void loop() {
   }
 
   // State Change logic
-  if (state_change_requested == 1 && state_change_allowed==1)
+  if (state_change_requested == 1 && switchAnimation(state, state_step)==true)
   {
     #ifdef EN_SER_PR
     Serial.print("State Change from "); Serial.print(state);
     #endif
+    // no defined next state
     if (state_next_state == 0xff)
     {
       state++;
-      if(state >= NUM_STATES)
+      if(state >= ANIM_COUNT)
       {
         state = 1;  // 0 is the off state. we dont want to automatically transition to off
       }
-
-      wrist_state++;
-      if (wrist_state >= NUM_RING_STATES)
-      {
-        wrist_state = 1;
-      }
     }
+    // defined next state
     else
     {
       // Allow external events (nrf incoming, button presses, etc to set the state)
@@ -305,82 +289,106 @@ void loop() {
     #ifdef EN_SER_PR
     Serial.print(" to "); Serial.println(state);
     #endif
-    state_change_requested = 0;
-    state_change_allowed = 0;
-    state_step = 0;
-    restore_palette();
-    state_init = 1;
+
+    // state var cleanup
+    state_change_requested = 0;  // clear state change request
+    state_step = 0;  // reset state step
+    restore_palette();  // restore previous color palette - TBD May not be needed
     // save current time
     last_state_change = millis();
-    // Send State ID
+
+    state_init = 1;  // we changed states.. perform state init (execution later)
+  }
+
+  // State machine - select animation mode, cfg, wrist state, and palette
+  // TODO load palette per state
+  // TODO add this info to some array / struct?
+  if (state == ANIM_TIE_OFF) {
+    bt_anim_mode = 1;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_OUTLINE2) {
+    bt_anim_mode = 1;
+    bt_anim_cfg = 2;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_OUTLINE4) {
+    bt_anim_mode = 1;
+    bt_anim_cfg = 4;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_OUTLINE_ON) {
+    bt_anim_mode = 1;
+    bt_anim_cfg = 255;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_OUTLINE_ON_RB) {
+    bt_anim_mode = 1;
+    bt_anim_cfg = 255;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_WHISKERS) {
+    bt_anim_mode = 3;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_PINWHEEL) {
+    bt_anim_mode = 4;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_NIGHTRIDER) {
+    bt_anim_mode = 2;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_NIGHTRIDER_RB) {
+    bt_anim_mode = 2;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_MATRIX) {
+    bt_anim_mode = 5;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_BTANIMATION) {
+    bt_anim_mode = 6;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+  else if (state == ANIM_RAINBOW) {
+    bt_anim_mode = 7;
+    bt_anim_cfg = 0;
+    wrist_state = 0;
+  }
+
+  // perform animation init
+  if(state_init != 0)
+  {
+    state_init = 0;
+    initAnimation(bt_anim_mode, bt_anim_cfg);
+    // send wrist state
     radio.stopListening();
     radio.flush_tx();
+    // If we have failed to TX x num times.. reset radio before this TX
     if(tx_fail_ct >= MAX_TX_FAIL)
     {
         tx_fail_ct = 0;
         reset_radio();
     }
     #ifdef ENABLE_PKT_ACK
-    radio.startWrite( &wrist_state, sizeof(uint8_t), 0; //ACK
+    radio.startWrite(&wrist_state, sizeof(uint8_t), 0; //ACK
     #else
-    radio.startWrite( &wrist_state, sizeof(uint8_t), 0); //NAK
+    radio.startWrite(&wrist_state, sizeof(uint8_t), 0); //NAK
     #endif
   }
 
-  // State machine
-  if (state == STATE_OFF) {
-    tie_no_leds();
-  }
-  else if (state == STATE_OUTLINE) {
-    outline(1);
-    //outline_single();
-  }
-  else if (state == STATE_OUTLINE_DUAL) {
-    outline(2);
-    //outline_dual();  
-  }
-  else if (state == STATE_OUTLINE_QUAD) {
-    outline(4);
-    //outline_quad();  
-  }
-  else if (state == STATE_OUTLINE_ON) {
-    if(state_init != 0)
-    {
-      state_init = 0;
-      backup_palette();
-      load_palette(PALETTE_PURPLE);
-    }
-    outline_on_from_palette();
-  }
-  else if (state == STATE_OUTLINE_ON_RAINBOW) {
-    if(state_init != 0)
-    {
-      state_init = 0;
-      backup_palette();
-      load_palette(PALETTE_RAINBOW);
-    }
-    outline_on_from_palette();
-  }
-  else if (state == STATE_NIGHTRIDER_RED) {
-    if(state_init != 0)
-    {
-      state_init = 0;
-      backup_palette();
-      load_palette(PALETTE_RED);
-    }
-    test_nightrider();
-  }
-  else if (state == STATE_NIGHTRIDER) {
-    test_nightrider();
-  }
-
-  /*
-    #ifdef ENABLE_PKT_ACK
-    radio.startWrite( &button_pressed_last, sizeof(uint8_t) , 0; //ACK 
-    #else
-    radio.startWrite( &button_pressed_last, sizeof(uint8_t) , 1); //NAK
-    #endif
-  */
+  // run animation
+  animAnimation(bt_anim_mode, state_step);
+  // increment animation step
+  state_step++;
 }
 
 void read_buttons() {
@@ -392,9 +400,8 @@ void read_buttons() {
     #ifdef EN_SER_PR
     Serial.println("BOT FALL");
     #endif
-    state_change_allowed = 1;
     state_change_requested = 1;
-    state_next_state = STATE_OFF;
+    state_next_state = ANIM_TIE_OFF;
     //forces next state to off
   }
 
@@ -403,9 +410,8 @@ void read_buttons() {
     Serial.println("MID FALL");
     #endif
     // TODO add one of Joe's Animations here
-    state_change_allowed = 1;
     state_change_requested = 1;
-    state_next_state = STATE_OUTLINE_ON;
+    state_next_state = ANIM_OUTLINE_ON;
     //forces next state to purple outline
   }
 
@@ -415,42 +421,10 @@ void read_buttons() {
     #ifdef EN_SER_PR
     Serial.println("TOP FALL");
     #endif
-    state_change_allowed = 1;
     state_change_requested = 1;
-    state_next_state = STATE_OUTLINE_ON;
+    state_next_state = ANIM_OUTLINE_ON;
     //forces next state to purple outline
   }
-  /*
-  else if ( top_sw.rose() ) {
-    ts = millis() - top_sw_fts;
-    Serial.println(ts);
-    if (ts > 5000) {
-      Serial.println("TOP HOLD 5+ SEC");
-    }
-    else if (ts > 4000) {
-      Serial.println("TOP HOLD 4 SEC");
-    }
-    else if (ts > 3000) {
-      Serial.println("TOP HOLD 3 SEC");
-    }
-    else if (ts > 2000) {
-      Serial.println("TOP HOLD 2 SEC");
-    }
-    else if (ts > 1000) {
-      Serial.println("TOP HOLD 1 SEC");
-      state_change_requested = 1;
-    }
-    else if (ts > 500) {
-      Serial.println("TOP HOLD 0.5 SEC");
-      state_change_requested = 1;
-      state_next_state = STATE_OUTLINE_ON_RAINBOW;  // forces next state
-    }
-    else
-    {
-      Serial.println("TOP PRESS");
-    }
-  }
-  */
 }
 
 /********************** Interrupts *********************/
