@@ -317,15 +317,6 @@ void loop() {
     // TODO palette
     wrist_state = 0;  // define via color palette
   }
-#if 0
-  else if (state == ANIM_BTANIMATION) {
-    // TODO ANIMATION
-    bt_anim_mode = 6;
-    bt_anim_cfg = 0;
-    // TODO palette
-    wrist_state = 0;  // define via color palette
-  }
-#endif
   else if (state == ANIM_RAINBOW) {
     // TODO ANIMATION
     bt_anim_mode = 7;
@@ -338,6 +329,14 @@ void loop() {
     bt_anim_cfg = 0;
     LoadPalette(PALETTE_RAINBOW);
     wrist_state = STATE_RING_CHASE4CLK_PURPLE;
+    palette_step = 0;
+  }
+  else if (state == ANIM_ARROWS) {
+    bt_anim_mode = 6;
+    bt_anim_cfg = 1;
+    LoadPalette(PALETTE_RAINBOW);
+    wrist_state = STATE_RING_CHASE4CLK_RAINBOW;
+    palette_step++;
   }
 
   // perform animation init

@@ -16,8 +16,8 @@
 uint8_t PG(uint8_t pg, uint8_t pixel);
 void P2C(uint8_t p, uint8_t *r, uint8_t *c);
 uint8_t C2P(uint8_t r, uint8_t c);
-void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo);
-void LoadFrame(uint8_t frame_idx, uint8_t *animation_data);
+void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo, uint8_t offset);
+void LoadFrame(uint8_t frame_idx, uint8_t *animation_data, uint8_t offset);
 
 #define PALETTE_RAINBOW 0
 #define PALETTE_PARTY	1

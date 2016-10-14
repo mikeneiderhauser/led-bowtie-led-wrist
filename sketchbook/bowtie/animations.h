@@ -17,6 +17,7 @@ bool switchAnimation(uint8_t anim, uint8_t step);
 #define ANIM_MATRIX		   9  // mode 5
 #define ANIM_RAINBOW		   10 // mode 7
 #define ANIM_MK			   11 // Mode 6, cfg 0
-#define ANIM_COUNT         	   14 // MAX ANIM COUNT
+#define ANIM_ARROWS		   12 // Mode 6, cfg 1
+#define ANIM_COUNT         	   13 // MAX ANIM COUNT
 
 #endif

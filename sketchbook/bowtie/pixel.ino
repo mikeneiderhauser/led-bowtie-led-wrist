@@ -182,7 +182,7 @@ void setPixel(uint8_t p, uint8_t c, uint8_t brightness) {
 
 // Unpack array of pixels with palette into display array
 // If undo is set, turn off the pixel instead of turning it on
-void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo) {
+void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo, uint8_t color_offset) {
 	uint8_t i, px, ct, pixel, color;
 
 	uint16_t offset = pgm_read_word_near(animation_data + ((frame << 1) + 3));
@@ -207,7 +207,7 @@ void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo) {
 				leds[pixel] = CRGB::Black;
 			// Colors are always maximum brightness...
 			} else {
-				color = pgm_read_byte_near(p + i + 1);
+				color = pgm_read_byte_near(p + i + 1) + color_offset;
 				leds[pixel] = ColorFromPalette(currentPalette, color, 0xFF, currentBlending);
 			}
 		}
@@ -215,11 +215,11 @@ void UnpackFrame(uint8_t frame, uint8_t *animation_data, bool undo) {
 }
 
 // Load animation frame from progmem
-void LoadFrame(uint8_t frame_idx, uint8_t *animation_data) {
+void LoadFrame(uint8_t frame_idx, uint8_t *animation_data, uint8_t color_offset) {
   uint8_t previous = frame_idx - 1;
 	if (frame_idx == 0)
 		previous = pgm_read_byte_near(animation_data) - 1;
 
-	UnpackFrame(previous, animation_data, true);
-	UnpackFrame(frame_idx, animation_data, false);
+	UnpackFrame(previous, animation_data, true, color_offset);
+	UnpackFrame(frame_idx, animation_data, false, color_offset);
 }
