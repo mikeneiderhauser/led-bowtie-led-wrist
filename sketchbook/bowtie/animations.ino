@@ -56,7 +56,11 @@ bool switch_TieOff(uint8_t step) {
 void init_Outline(uint8_t cfg) {
 	mode_cfg = cfg;
 	mode_steps = PX_EDGE_SIZE;
-	ms = FPS(50);
+	if (cfg == 255)
+		ms = 0;
+	else
+		ms = FPS(50);
+
 	// Set the default palette	
 }
 
