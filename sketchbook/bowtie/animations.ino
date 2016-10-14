@@ -1,146 +1,351 @@
 #include "wrist_states.h"
 
-void tie_off() {
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CRGB::Black;
-  }
-  FastLED.show();
+// All animation functions have three functions:
+// 	Initialization - Sets variables
+//		- cfg - Configuration for different modes of the same animation
+//		- Mode_steps - Number of steps to complete one cycle of this animation
+//			A value of 0 is infinite
+//		- ms - ms per frame for the animation
+//			0 indicates that the animation should run as fast as possible
+//	Animation - Performs the animation at the current step
+//	Switch - Returns true when the animation can be switched
+
+uint8_t mode_cfg = 0;
+uint8_t mode_steps = 0;
+uint16_t ms = 0;
+
+#define FPS(x) (1000/x)
+
+// This is a flag for allowing the mode to change
+uint8_t mode_change_allowed = 1;
+// This is a flag for when a button requests a mode change
+uint8_t mode_change_requested = 0;
+
+// Function for blanking the LEDs
+void blankLEDs(void) {
+	for (uint8_t i = 0; i < NUM_LEDS; i++) {
+  		leds[i] = CRGB::Black;
+  	}
 }
 
-void tie_no_leds() {
-  if (state_step == 0)
-    {
-      tie_off();
-      state_step++;
-    }
-    if(state_change_requested == 1)
-    {
-      // allow state transition immediately
-      state_change_allowed = 1;
-    }
+// **********************************************
+// * Turns the Bowtie completely off
+// **********************************************
+void init_TieOff(uint8_t cfg) {
+	mode_steps = 1;	
+	ms = 0;
+	mode_cfg = cfg;
 }
 
-void outline(uint8_t ct)
-{
-  uint8_t idxs[44] = {0,1,2,3,4,5,6,7,8,9,26,27,38,39,44,45,50,51,58,59,74,75,92,91,90,89,88,87,86,85,84,83,66,65,54,53,48,47,42,41,34,33,18,17};
-
-  // turn off last step
-  tie_off();
-  // set new light
-  leds[idxs[state_step]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-
-  if(ct == 4) {
-    if (state_step < 11)
-    {
-      leds[idxs[state_step+33]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    }
-    else
-    {
-      leds[idxs[state_step-11]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    }
-
-    if (state_step < 33)
-    {
-      leds[idxs[state_step+11]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    }
-    else
-    {
-      leds[idxs[state_step-33]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    }
-  }
-
-  if(ct == 2 || ct == 4) {
-    if (state_step < 22)
-    {
-      leds[idxs[state_step+22]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    }
-    else
-    {
-      leds[idxs[state_step-22]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    }
-  }
-
-  FastLED.show();
-  delay(20);
-  
-  state_step++;
-  palette_step++;
-  if (state_step == 44) {
-    state_step = 0;
-  }
-
-  if(state_change_requested == 1 && state_step == 0)
-  {
-    // allow state transition immediately
-    state_change_allowed = 1;
-  }
+void anim_TieOff(uint8_t step) {
+	if (step == 0) {
+		blankLEDs();
+	}
 }
 
-void outline_on_from_palette() {
-  uint8_t idxs[44] = {0,1,2,3,4,5,6,7,8,9,26,27,38,39,44,45,50,51,58,59,74,75,92,91,90,89,88,87,86,85,84,83,66,65,54,53,48,47,42,41,34,33,18,17};
-
-  for(uint8_t i = 0; i<44; i++)
-  {
-    leds[idxs[i]] = ColorFromPalette( currentPalette, state_step, 255, currentBlending);
-  }
-  FastLED.show();
-  state_step = state_step + 2;
-      
-  if(state_change_requested == 1)
-  {
-    // allow state transition immediately
-    state_change_allowed = 1;
-  }
+bool switch_TieOff(uint8_t step) {
+	return true;
 }
 
-void test_nightrider(){
-  uint8_t idxs[15] = {4,13,22,30,36,40,43,46,49,52,56,62,70,79,88};
+// **********************************************
+// * Performs the outline animation
+// * Configurable based on the integer passed in
+// **********************************************
+void init_Outline(uint8_t cfg) {
+	mode_cfg = cfg;
+	mode_steps = PX_EDGE_SIZE;	
+	ms = FPS(50);
+	// Set the default palette	
+}
 
-  if (state_step < 15)
-  {
-    // right to left
-    tie_off();
-    leds[idxs[state_step]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    leds[idxs[state_step]-1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    leds[idxs[state_step]+1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    FastLED.show();
-    delay(20);
-  }
+void anim_Outline(uint8_t step) {
+	uint8_t last_step = 0;
+	uint8_t px;
 
-  if(state_step == 15)
-  {
-    //pause
-    delay(500);
-  }
+	// This is the always on mode
+	if (cfg == 255) {
+  		for(uint8_t i = 0; i<PX_EDGE_SIZE; i++) {
+			px = PG(PX_Edge, i);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		}
+		return;
+	} 
 
-  palette_step++;
-  if(state_step >= 15)
-  {
-    //left to right
-    // max state_step is 30
-    uint8_t idx = 29 - state_step;
-    tie_off();
-    leds[idxs[idx]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    leds[idxs[idx]-1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    leds[idxs[idx]+1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
-    FastLED.show();
-    delay(20);
-  }
+	// Get the previous step
+	if (step == 0)
+		last_step = mode_steps;
+	else
+		last_step = step - 1;
 
-  palette_step++;
-  if(state_step == 29)
-  {
-    delay(500);
-    state_step = 0;
-  }
-  else
-  {
-    state_step++;
-  }
+	// Turn off last LEDs
+	px = PG(PX_Edge, last_step);
+	leds[px] = CRGB::Black;
 
-  if(state_change_requested == 1)
-  {
-    // allow state transition immediately
-    state_change_allowed = 1;
-  }
+	// Turn off all of the possibly used LEDs, keep it simple
+	if (cfg == 4) {
+		px = PG(PX_Edge, last_step + 33);
+		leds[px] = CRGB:Black;
+
+		px = PG(PX_Edge, last_step - 11);
+		leds[px] = CRGB:Black;
+
+		px = PG(PX_Edge, last_step - 33);
+		leds[px] = CRGB:Black;
+
+		px = PG(PX_Edge, last_step + 11);
+		leds[px] = CRGB:Black;
+	}
+
+	if ((cfg == 2) || (cfg == 4)) {
+		px = PG(PX_Edge, last_step + 22);
+		leds[px] = CRGB:Black;
+
+		px = PG(PX_Edge, last_step - 22);
+		leds[px] = CRGB:Black;
+	}
+
+	// Turn on current LEDs
+	px = PG(PX_Edge, step);
+	leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+
+	// Turn on the 4x LEDs
+	if (cfg == 4) {
+    		if (step < 11) {
+			px = PG(PX_Edge, step + 33);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		} else {
+			px = PG(PX_Edge, step - 11);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		}
+
+    		if (step < 33) {
+			px = PG(PX_Edge, step + 11);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		} else {
+			px = PG(PX_Edge, step - 33);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		}
+	}
+	
+	// Turn on the 2x LEDs
+	if ((cfg == 2) || (cfg == 4)) {
+    		if (step < 22) {
+			px = PG(PX_Edge, step + 22);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		} else {
+			px = PG(PX_Edge, step - 22);
+			leds[px] = ColorFromPalette(currentPalette, palette_step, 255, currentBlending);
+		}
+	}
+
+	// Increment through the palette
+  	palette_step++;
+}
+
+bool switch_Outline(uint8_t step) {
+	// We return true when we're at step 0 or we're in always on mode
+	if ((state == 0) || (cfg == 255))
+		return true;
+	return false;
+}
+
+// **********************************************
+// * "Night Rider" Animation
+// **********************************************
+void init_Nightrider(uint8_t cfg) {
+	mode_steps = 80;
+	ms = FPS(50);
+	cfg = 0;
+}
+
+void anim_Nightrider(uint8_t step) {
+	const uint8_t idxs[15] = {4,13,22,30,36,40,43,46,49,52,56,62,70,79,88};
+	uint8_t last = step - 1;
+	if (step < 15) {
+		// Clear the previous pixels
+		leds[idxs[last]] = CRGB::Black;
+		leds[idxs[last] - 1] = CRGB::Black;
+		leds[idxs[last] + 1] = CRGB::Black;
+
+		// Right to left
+	    	leds[idxs[step]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+    		leds[idxs[step] - 1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+    		leds[idxs[step] + 1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+	}
+
+	// We wait for 25 steps
+  	if (step >= 15) && (step < 40) {
+		// Do nothing...
+		;;
+	}
+
+	// Increment the color
+	if (step == 40)
+		palette_step++;
+
+	// Go back
+	if ((step >= 40) && (step < 55)) {
+		uint8_t idx = 29 - (last - 40);
+		// Clear the previous pixels
+		leds[idxs[idx]] = CRGB::Black;
+		leds[idxs[idx] - 1] = CRGB::Black;
+		leds[idxs[idx] + 1] = CRGB::Black;
+
+		// Left to Right
+		uint8_t idx = 29 - (step - 40);
+	    	leds[idxs[idx]] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+    		leds[idxs[idx] - 1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+    		leds[idxs[idx] + 1] = ColorFromPalette( currentPalette, palette_step, 255, currentBlending);
+	}
+
+	// We wait for 25 steps
+	if (step >= 55) {
+		// Do nothing...
+	}
+
+	// Increment the color
+	if (step == 79)
+		palette_step++;
+}
+
+bool switch_Nightrider(uint8_t step) {
+	if (step == 0)
+		return True;
+	return false;
+}
+
+// **********************************************
+// * "Pinwheel" Dots Animation
+// **********************************************
+void init_Pinwheel(int cfg) {
+
+}
+
+void anim_Pinwheel(uint8_t step) {
+
+}
+
+void switch_Pinwheel(uint8_t step) {
+	if (step == 0)
+		return true;
+	return false;
+}
+
+// **********************************************
+// * "Whiskers" Animation
+// **********************************************
+void init_Whiskers(int cfg) {
+
+}
+
+void anim_Whiskers(uint8_t step) {
+
+}
+
+void switch_Whiskers(uint8_t step) {
+	if (step == 0)
+		return true;
+	return false;
+}
+
+// **********************************************
+// * "Matrix" Animation
+// **********************************************
+void init_Matrix(int cfg) {
+
+}
+
+void anim_Matrix(uint8_t step) {
+
+}
+
+void switch_Matrix(uint8_t step) {
+	return true;
+}
+
+// **********************************************
+// * Play an Animation from BowtieEd
+// **********************************************
+void init_BTAnimation(uint8_t cfg) {
+	// The cfg indicates which animation to play
+	mode_cfg = cfg;
+
+	// Set the number of frames from the animation data
+	mode_steps = pgm_read_byte_near(BT_Animations[cfg]);
+
+	// Set the FPS from the animation data
+	ms = FPS(pgm_read_byte_near(BT_Animations[cfg] + 1);
+	
+	// Set the palette from the animation data
+	uint8_t pal = FPS(pgm_read_byte_near(BT_Animations[cfg] + 2);
+}
+
+void anim_BTAnimation(uint8_t step) {
+   LoadFrame(step, BT_Animations[cfg]);
+}
+
+bool switch_BTAnimation(uint8_t step) {
+	return true;
+}
+
+// ****************************************************************************
+// Animation modes
+// ****************************************************************************
+typedef void (*init_func)(uint8_t) Animation_Init_t;
+Animation_Init_t Animation_Inits = {
+	init_TieOff,
+	init_Outline,
+	init_Nightrider,
+	init_Whiskers,
+	init_Pinwheel,
+	init_Matrix,
+	init_BTAnimation,
+//	init_Rainbow
+};
+
+typedef void (*anim_func)(uint8_t) Animation_Func_t;
+Animation_Func_t Animation_Funcs = {
+	anim_TieOff,
+	anim_Outline,
+	anim_Nightrider,
+	anim_Whiskers,
+	anim_Pinwheel,
+	anim_Matrix,
+	anim_BTAnimation,
+//	anim_Rainbow
+};
+
+typedef void (*switch_func)(uint8_t) Animation_Switch_t;
+Animation_Switch_t Animation_Switches = {
+	switch_TieOff,
+	switch_Outline,
+	switch_Nightrider,
+	switch_Whiskers,
+	switch_Pinwheel,
+	switch_Matrix,
+	switch_BTAnimation,
+//	switch_Rainbow
+};
+
+// ****************************************************************************
+// Animation functions
+// ****************************************************************************
+void initAnimation(uint8_t anim, uint8_t cfg) {
+	blankLEDs();
+	Animation_Inits[anim](cfg);
+}
+
+void animAnimation(uint8_t anim, uint8_t step) {
+	Animation_Func[anim](step);
+
+	// Update the LEDs
+	FastLED.show();	
+	
+	// Delay for the FPS
+	if (ms != 0)
+		delay(ms);
+}
+
+void switchAnimation(uint8_t anim, uint8_t step) {
+	Animation_Switches[anim](step);
 }
