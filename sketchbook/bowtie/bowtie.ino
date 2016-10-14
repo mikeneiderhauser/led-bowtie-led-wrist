@@ -252,7 +252,7 @@ void loop() {
     state_init = 1;  // we changed states.. perform state init (execution later)
   }
 
-  state = ANIM_MATRIX;
+  state = ANIM_MK;
   // State machine - select animation mode, cfg, wrist state, and palette
   // TODO load palette per state
   if (state == ANIM_TIE_OFF) {
@@ -334,17 +334,12 @@ void loop() {
     LoadPalette(PALETTE_RAINBOW);
     wrist_state = STATE_RING_CHASE4CLK_RAINBOW;
   }
-#if 0
-  else if (state == ANIM_MOUSTACHE) {
-    bt_anim_mode = ;
+  else if (state == ANIM_MK) {
+    bt_anim_mode = 6;
     bt_anim_cfg = 0;
+    LoadPalette(PALETTE_RAINBOW);
+    wrist_state = STATE_RING_CHASE4CLK_PURPLE;
   }
-  else if (state == ANIM_MOUSTACHE_ON) {
-    bt_anim_mode = ;
-    bt_anim_cfg = 255;
-
-  }
-#endif
 
   // perform animation init
   if(state_init != 0)

@@ -16,9 +16,7 @@ bool switchAnimation(uint8_t anim, uint8_t step);
 #define ANIM_NIGHTRIDER_RB 	   8 // mode 2
 #define ANIM_MATRIX		   9  // mode 5
 #define ANIM_RAINBOW		   10 // mode 7
-#define ANIM_MOUSTACHE		   11 // mode 8
-#define ANIM_MK			   12 // Mode 6, cfg 0
-
+#define ANIM_MK			   11 // Mode 6, cfg 0
 #define ANIM_COUNT         	   14 // MAX ANIM COUNT
 
 #endif
