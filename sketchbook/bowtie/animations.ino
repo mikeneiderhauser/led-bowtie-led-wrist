@@ -78,45 +78,8 @@ void anim_Outline(uint8_t step) {
     return;
 	} 
 
-	// Get the previous step
-	if (step == 0)
-		last_step = mode_steps;
-	else
-		last_step = step - 1;
-
-	// Turn off last LEDs
-	px = PG(1, last_step);
-	leds[px] = CRGB::Black;
-
-	// Turn off all of the possibly used LEDs, keep it simple
-  if (mode_cfg == 4) {
-    if (step < 11) {
-		  px = PG(PG_EDGE, last_step + 33);
-		  leds[px] = CRGB::Black;
-    } else {
-		  px = PG(PG_EDGE, last_step - 11);
-		  leds[px] = CRGB::Black;
-    }
-    
-    if (step < 33) {
-		  px = PG(PG_EDGE, last_step - 33);
-		  leds[px] = CRGB::Black;
-    } else {
-	  	px = PG(PG_EDGE, last_step + 11);
-		  leds[px] = CRGB::Black;
-	  }
-  }
-
-	if ((mode_cfg == 2) || (mode_cfg == 4)) {
-	  if (step < 22) {
-		  px = PG(PG_EDGE, last_step + 22);
-		  leds[px] = CRGB::Black;
-	  } else {
-		  px = PG(PG_EDGE, last_step - 22);
-		  leds[px] = CRGB::Black;
-	  }
-	}
-
+	blankLEDs();
+	
 	// Turn on current LEDs
 	px = PG(PG_EDGE, step);
 	setPixel(px, palette_step);
