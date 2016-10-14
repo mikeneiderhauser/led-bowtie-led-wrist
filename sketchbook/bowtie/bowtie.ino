@@ -252,7 +252,7 @@ void loop() {
     state_init = 1;  // we changed states.. perform state init (execution later)
   }
 
-  state = ANIM_PINWHEEL;
+  state = ANIM_MATRIX;
   // State machine - select animation mode, cfg, wrist state, and palette
   // TODO load palette per state
   if (state == ANIM_TIE_OFF) {

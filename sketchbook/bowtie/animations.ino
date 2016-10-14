@@ -266,12 +266,58 @@ void switch_Whiskers(uint8_t step) {
 // **********************************************
 // * "Matrix" Animation
 // **********************************************
-void init_Matrix(int cfg) {
 
+// 8 simultaneous streaks
+uint8_t matrix_vals[8];
+
+void init_Matrix(int cfg) {
+	uint8_t r, c, px;
+
+	mode_cfg = cfg;
+	mode_steps = 255;
+	ms = FPS(10);
+
+	// Set up the matrix
+	for (uint8_t i=0; i<8; i++) {
+		// Pick a random pixel
+		uint8_t px = random(0, PIXEL_CT);
+		P2C(px, &r, &c);
+		matrix_vals[i] = (r << 4) | c;
+	}
 }
 
 void anim_Matrix(uint8_t step) {
+	uint8_t px, r, c;
+	// Clear the screen
+	blankLEDs();
 
+	for (uint8_t i=0; i<8; i++) {
+		r = (matrix_vals[i] >> 4);
+		c = (matrix_vals[i] & 0xF);
+		r++;
+
+		// Get a new pixel if we went off
+		if (r >= NUM_ROW + 2) {
+			px = random(0, PIXEL_CT);
+			P2C(px, &r, &c);
+		}
+
+		px = C2P(r, c);
+		if (px != 255)
+			setPixel(px, palette_step, 255);
+
+		px = C2P(r - 1, c);
+		if (px != 255)
+			setPixel(px, palette_step, 128);
+		
+		px = C2P(r - 2, c);
+		if (px != 255)
+			setPixel(px, palette_step, 64);
+
+		// Set the row and column values back
+		matrix_vals[i] = (r << 4) | c;
+	}
+	palette_step++;
 }
 
 void switch_Matrix(uint8_t step) {
