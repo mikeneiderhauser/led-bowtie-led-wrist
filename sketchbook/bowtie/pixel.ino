@@ -1,28 +1,94 @@
 #include <avr/pgmspace.h>
 #include "wrist_states.h"
-#define NUM_COL  	15
-#define NUM_ROW 	9
-#define PIXEL_CT	93
+#include "pixel.h"
+#include "FastLED.h"
+
+// ******************************************************************
+// Color Palette Functionality
+// ******************************************************************
+
+// Palettes
+const TProgmemPalette16 PurplePalette_p PROGMEM = {
+  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
+  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
+  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple,
+  CRGB::Purple,CRGB::Purple,CRGB::Purple,CRGB::Purple
+};
+
+const TProgmemPalette16 RedPalette_p PROGMEM = {
+  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
+  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
+  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red,
+  CRGB::Red,CRGB::Red,CRGB::Red,CRGB::Red
+};
+
+const TBlendType Blending[5] = {
+  LINEARBLEND,
+  LINEARBLEND,
+  LINEARBLEND,
+  NOBLEND,
+  NOBLEND
+};
+
+CRGBPalette16 currentPalette;
+TBlendType    currentBlending;
+
+CRGBPalette16 backupPalette;
+TBlendType    backupBlending;
+
+void BackupPalette(void) {
+  backupPalette = currentPalette;
+  backupBlending = currentBlending;
+}
+
+void RestorePalette(void) {
+  currentPalette = backupPalette;
+  currentBlending = backupBlending;
+}
+
+void LoadPalette(uint8_t palette_id) {
+  switch(palette_id) {
+    case PALETTE_RAINBOW:
+      currentPalette = RainbowColors_p;
+      break;
+    case PALETTE_PARTY:
+      currentPalette = PartyColors_p;
+      break;
+    case PALETTE_HEAT:
+      currentPalette = HeatColors_p;
+      break;
+    case PALETTE_PURPLE:
+      currentPalette = PurplePalette_p;
+      break;
+    case PALETTE_RED:
+      currentPalette = RedPalette_p;
+      break;
+  }
+  currentBlending = Blending[palette_id];
+}
 
 // *************************************
 // Useful pixel groups for animations
 // *************************************
 
 // All of the interior pixels with 1 pixel on all sides
-#define PX_ONE_NEIGHBOR_SIZE	37	
 const uint8_t PX_One_Neighbor[PX_ONE_NEIGHBOR_SIZE] PROGMEM = {
 	10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24, 29, 30, 31, 36, 40, 43, 46, 49, 52, 56, 61, 62, 63, 68, 69, 70, 71, 72, 76, 77, 78, 79, 80, 81, 82
 };
 
 // Just the exterior pixels
-#define PX_EDGE_SIZE	44
 const uint8_t PX_Edge[PX_EDGE_SIZE] PROGMEM = {
   	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 26, 27, 38, 39, 44, 45, 50, 51, 58, 59, 74, 75, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 66, 65, 54, 53, 48, 47, 42, 41, 34, 33, 18, 17
 };
 
+uint8_t *Pixel_Groups[2] = {
+  PX_One_Neighbor,
+  PX_Edge
+};
+
 // Get a pixel from a pixel group
-uint8_t PG(uint8_t *pg, uint8_t pixel) {
-	return pgm_read_byte_near(pg + pixel);
+uint8_t PG(uint8_t pg, uint8_t pixel) {
+	return pgm_read_byte_near(Pixel_Groups[pg] + pixel);
 }
 
 // *************************************
@@ -73,6 +139,11 @@ void P2C(uint8_t p, uint8_t *r, uint8_t *c) {
 // Get a pixel # from row and column
 uint8_t C2P(uint8_t r, uint8_t c) {
 	return pgm_read_byte_near(&(row_col_tbl[r][c]));
+}
+
+// Set a pixel from a pixel # and color index
+void setPixel(uint8_t p, uint8_t c) {
+	leds[p] = ColorFromPalette(currentPalette, c, 255, currentBlending);
 }
 
 // Format for Animations:
