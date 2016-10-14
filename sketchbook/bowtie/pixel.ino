@@ -143,7 +143,8 @@ uint8_t C2P(uint8_t r, uint8_t c) {
 
 // Set a pixel from a pixel # and color index
 void setPixel(uint8_t p, uint8_t c) {
-	leds[p] = ColorFromPalette(currentPalette, c, 255, currentBlending);
+  if (p < PIXEL_CT)
+	  leds[p] = ColorFromPalette(currentPalette, c, 255, currentBlending);
 }
 
 // Format for Animations:
