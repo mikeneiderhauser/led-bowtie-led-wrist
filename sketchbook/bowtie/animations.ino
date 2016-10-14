@@ -151,6 +151,7 @@ void anim_Nightrider(uint8_t step) {
 		setPixel(idxs[step], palette_step, 255);
 		setPixel(idxs[step] - 1, palette_step, 255);
 		setPixel(idxs[step] + 1, palette_step, 255);
+    palette_step++;
 	}
 
 	// We wait for 25 steps
@@ -173,6 +174,7 @@ void anim_Nightrider(uint8_t step) {
 		setPixel(idxs[idx], palette_step, 255);
 		setPixel(idxs[idx] - 1, palette_step, 255);
 		setPixel(idxs[idx] + 1, palette_step, 255);
+    palette_step++;
 	}
 
 	// We wait for 25 steps

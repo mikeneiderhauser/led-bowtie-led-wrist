@@ -52,9 +52,9 @@ unsigned long top_sw_fts;
 
 unsigned long ts;
 
-#define P_SWB P_SW0
+#define P_SWB P_SW2
 #define P_SWM P_SW1
-#define P_SWT P_SW2
+#define P_SWT P_SW0
 
 
 // LED Defines
@@ -255,7 +255,7 @@ void loop() {
   // State machine - select animation mode, cfg, wrist state, and palette
   // TODO load palette per state
   if (state == ANIM_TIE_OFF) {
-    bt_anim_mode = 1;
+    bt_anim_mode = 0;
     bt_anim_cfg = 0;
     wrist_state = 0; // FORCE OFF
   }
@@ -275,7 +275,7 @@ void loop() {
     bt_anim_mode = 1;
     bt_anim_cfg = 255;
     LoadPalette(PALETTE_PURPLE);
-    wrist_state = STATE_RING_CHASE4NCLK_RAINBOW;
+    wrist_state = STATE_RING_ALL_PURPLE;
   }
   else if (state == ANIM_OUTLINE_ON_RB) {
     bt_anim_mode = 1;
@@ -284,6 +284,7 @@ void loop() {
     wrist_state = STATE_RING_ALL_RAINBOW;
   }
   else if (state == ANIM_WHISKERS) {
+    // checkers
     bt_anim_mode = 6;
     bt_anim_cfg = 2;
     LoadPalette(PALETTE_RAINBOW);
@@ -332,7 +333,7 @@ void loop() {
     bt_anim_cfg = 1;
     LoadPalette(PALETTE_RAINBOW);
     wrist_state = STATE_RING_CHASE4CLK_RAINBOW;
-    palette_step++;
+    palette_step = palette_step + 2;
   }
 
   // perform animation init
@@ -385,10 +386,9 @@ void read_buttons() {
     #ifdef EN_SER_PR
     Serial.println("MID FALL");
     #endif
-    // TODO add one of Joe's Animations here
     state_change_requested = 1;
-    state_next_state = ANIM_OUTLINE_ON;
-    //forces next state to purple outline
+    state_next_state = ANIM_RAINBOW;
+    //forces next state to pfull rainbow
   }
 
   // Falling edge first then rising edge
