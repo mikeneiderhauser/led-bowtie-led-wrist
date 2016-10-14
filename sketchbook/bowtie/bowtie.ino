@@ -83,7 +83,7 @@ byte address[][5] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC , 0xCE, 0xCC, 0xCE, 0xCC, 0xC
 
 /********************** Setup *********************/
 
-uint8_t state = ANIM_TIE_OFF;
+uint8_t state = ANIM_NIGHTRIDER;  //ANIM_NIGHTRIDER;
 uint8_t wrist_state = 0;
 uint8_t state_step = 0;
 uint8_t state_init = 0;
@@ -249,6 +249,7 @@ void loop() {
     state_init = 1;  // we changed states.. perform state init (execution later)
   }
 
+  state = ANIM_OUTLINE_ON;
   // State machine - select animation mode, cfg, wrist state, and palette
   // TODO load palette per state
   // TODO add this info to some array / struct?
@@ -260,57 +261,57 @@ void loop() {
   else if (state == ANIM_OUTLINE2) {
     bt_anim_mode = 1;
     bt_anim_cfg = 2;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_OUTLINE4) {
     bt_anim_mode = 1;
     bt_anim_cfg = 4;
-    wrist_state = 0;
+    wrist_state = 0; // define via color palette
   }
   else if (state == ANIM_OUTLINE_ON) {
     bt_anim_mode = 1;
     bt_anim_cfg = 255;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_OUTLINE_ON_RB) {
     bt_anim_mode = 1;
     bt_anim_cfg = 255;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_WHISKERS) {
     bt_anim_mode = 3;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_PINWHEEL) {
     bt_anim_mode = 4;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_NIGHTRIDER) {
     bt_anim_mode = 2;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_NIGHTRIDER_RB) {
     bt_anim_mode = 2;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_MATRIX) {
     bt_anim_mode = 5;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_BTANIMATION) {
     bt_anim_mode = 6;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
   else if (state == ANIM_RAINBOW) {
     bt_anim_mode = 7;
     bt_anim_cfg = 0;
-    wrist_state = 0;
+    wrist_state = 0;  // define via color palette
   }
 
   // perform animation init
