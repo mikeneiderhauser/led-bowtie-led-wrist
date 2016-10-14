@@ -70,7 +70,8 @@ void anim_Outline(uint8_t step) {
 			px = PG(PG_EDGE, i);
 			setPixel(px, palette_step);
 		}
-		return;
+    palette_step++;
+		return true;
 	} 
 
 	// Get the previous step
@@ -141,7 +142,9 @@ void anim_Outline(uint8_t step) {
 	}
 
 	// Increment through the palette
-  	palette_step++;
+  palette_step++;
+
+  return;
 }
 
 bool switch_Outline(uint8_t step) {
@@ -350,15 +353,17 @@ void initAnimation(uint8_t anim, uint8_t cfg) {
 	(Animation_Inits[anim])(cfg);
 }
 
-void animAnimation(uint8_t anim, uint8_t step) {
+bool animAnimation(uint8_t anim, uint8_t step) {
 	(Animation_Funcs[anim])(step);
 
 	// Update the LEDs
-	FastLED.show();	
+	FastLED.show();
 	
 	// Delay for the FPS
 	if (ms != 0)
 		delay(ms);
+
+  return (step == (mode_steps - 1));
 }
 
 bool switchAnimation(uint8_t anim, uint8_t step) {
