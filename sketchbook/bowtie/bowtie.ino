@@ -97,7 +97,7 @@ uint8_t bt_anim_mode = 1;
 uint8_t bt_anim_cfg = 0;
 
 unsigned long last_state_change = 0;
-unsigned long state_change_timeout = 10 * 1000; // in seconds
+unsigned long state_change_timeout = 20 * 1000; // in seconds
 
 // function to turn on (physically) and init the radio
 void start_radio() {
@@ -217,7 +217,7 @@ void loop() {
   }
 
   // State Change logic
-  if (state_change_requested == 1 && switchAnimation(state, state_step)==true)
+  if (state_change_requested == 1 && switchAnimation(state, state_step) == true)
   {
     #ifdef EN_SER_PR
     Serial.print("State Change from "); Serial.print(state);
@@ -252,7 +252,6 @@ void loop() {
     state_init = 1;  // we changed states.. perform state init (execution later)
   }
 
-  state = ANIM_MK;
   // State machine - select animation mode, cfg, wrist state, and palette
   // TODO load palette per state
   if (state == ANIM_TIE_OFF) {
