@@ -162,8 +162,13 @@ void init_Nightrider(uint8_t cfg) {
 
 void anim_Nightrider(uint8_t step) {
 	const uint8_t idxs[15] = {4,13,22,30,36,40,43,46,49,52,56,62,70,79,88};
-	uint8_t last = step - 1;
+	uint8_t idx = 0;
+	uint8_t last;
 	if (step < 15) {
+    if (step == 0)
+      last = 14;
+    else
+      last = step - 1;
 		// Clear the previous pixels
 		leds[idxs[last]] = CRGB::Black;
 		leds[idxs[last] - 1] = CRGB::Black;
@@ -187,7 +192,11 @@ void anim_Nightrider(uint8_t step) {
 
 	// Go back
 	if ((step >= 40) && (step < 55)) {
-		uint8_t idx = 29 - (last - 40);
+		if (step == 40)
+      idx = 15;
+    else
+      idx = 29 - (last - 40);
+   
 		// Clear the previous pixels
 		leds[idxs[idx]] = CRGB::Black;
 		leds[idxs[idx] - 1] = CRGB::Black;
