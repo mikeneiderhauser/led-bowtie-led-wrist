@@ -56,11 +56,7 @@ bool switch_TieOff(uint8_t step) {
 void init_Outline(uint8_t cfg) {
 	mode_cfg = cfg;
 	mode_steps = PX_EDGE_SIZE;
-	if (cfg == 255)
-		ms = 0;
-	else
-		ms = FPS(50);
-
+	ms = FPS(50);
 	// Set the default palette	
 }
 
@@ -78,8 +74,45 @@ void anim_Outline(uint8_t step) {
     return;
 	} 
 
-	blankLEDs();
-	
+	// Get the previous step
+	if (step == 0)
+		last_step = mode_steps;
+	else
+		last_step = step - 1;
+
+	// Turn off last LEDs
+	px = PG(1, last_step);
+	leds[px] = CRGB::Black;
+
+	// Turn off all of the possibly used LEDs, keep it simple
+  if (mode_cfg == 4) {
+    if (step < 11) {
+		  px = PG(PG_EDGE, last_step + 33);
+		  leds[px] = CRGB::Black;
+    } else {
+		  px = PG(PG_EDGE, last_step - 11);
+		  leds[px] = CRGB::Black;
+    }
+    
+    if (step < 33) {
+		  px = PG(PG_EDGE, last_step - 33);
+		  leds[px] = CRGB::Black;
+    } else {
+	  	px = PG(PG_EDGE, last_step + 11);
+		  leds[px] = CRGB::Black;
+	  }
+  }
+
+	if ((mode_cfg == 2) || (mode_cfg == 4)) {
+	  if (step < 22) {
+		  px = PG(PG_EDGE, last_step + 22);
+		  leds[px] = CRGB::Black;
+	  } else {
+		  px = PG(PG_EDGE, last_step - 22);
+		  leds[px] = CRGB::Black;
+	  }
+	}
+
 	// Turn on current LEDs
 	px = PG(PG_EDGE, step);
 	setPixel(px, palette_step);
@@ -140,16 +173,11 @@ void anim_Nightrider(uint8_t step) {
 	const uint8_t idxs[15] = {4,13,22,30,36,40,43,46,49,52,56,62,70,79,88};
 	uint8_t idx = 0;
 	uint8_t last;
-	if (step < 15) {
-    if (step == 0)
-      last = 14;
-    else
-      last = step - 1;
-		// Clear the previous pixels
-		leds[idxs[last]] = CRGB::Black;
-		leds[idxs[last] - 1] = CRGB::Black;
-		leds[idxs[last] + 1] = CRGB::Black;
 
+  // Clear the matrix
+  blankLEDs();
+  
+	if (step < 15) {
 		// Right to left
 		setPixel(idxs[step], palette_step);
 		setPixel(idxs[step] - 1, palette_step);
@@ -168,18 +196,8 @@ void anim_Nightrider(uint8_t step) {
 
 	// Go back
 	if ((step >= 40) && (step < 55)) {
-		if (step == 40)
-      idx = 15;
-    else
-      idx = 29 - (last - 40);
-   
-		// Clear the previous pixels
-		leds[idxs[idx]] = CRGB::Black;
-		leds[idxs[idx] - 1] = CRGB::Black;
-		leds[idxs[idx] + 1] = CRGB::Black;
-
 		// Left to Right
-		idx = 29 - (step - 40);
+		idx = 29 - (step - 25);
 		setPixel(idxs[idx], palette_step);
 		setPixel(idxs[idx] - 1, palette_step);
 		setPixel(idxs[idx] + 1, palette_step);
